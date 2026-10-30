@@ -820,9 +820,7 @@ export default function MovieEditor({
             <span className="text-hot">{error}</span>
           ) : status ? (
             <span className="text-accent-light">{status}</span>
-          ) : isEdit ? (
-            "Өөрчлөлтөө хадгалахаа мартуузай"
-          ) : (
+          ) : isEdit ? null : (
             "Ноорог автоматаар хадгалагдана"
           )}
         </p>
@@ -842,7 +840,13 @@ export default function MovieEditor({
           onClick={submit}
           className="btn-accent h-12 rounded-xl px-6 text-[15px] font-semibold disabled:opacity-60"
         >
-          {busy ? "Түр хүлээнэ үү…" : isEdit ? "Хадгалах" : kind === "series" ? "Цуврал нэмэх" : "Кино нэмэх"}
+          {busy
+            ? "Түр хүлээнэ үү…"
+            : isEdit
+              ? "Өөрчлөлтийг хадгалах"
+              : kind === "series"
+                ? "Цуврал нэмэх"
+                : "Кино нэмэх"}
         </button>
       </div>
     </div>
