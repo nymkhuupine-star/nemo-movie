@@ -95,9 +95,9 @@ async function uploadPoster(file: File): Promise<string> {
 function parseDuration(v: FormDataEntryValue | null): number | null {
   const t = String(v ?? "").trim().toLowerCase();
   if (!t) return null;
-  const hm = t.match(/(?:(d+)s*ц)?s*(?:(d+)s*м)?/);
+  const hm = t.match(/(?:(\d+)\s*ц)?\s*(?:(\d+)\s*м)?/);
   if (hm && (hm[1] || hm[2])) return Number(hm[1] ?? 0) * 60 + Number(hm[2] ?? 0);
-  const colon = t.match(/^(d+):(d{1,2})$/);
+  const colon = t.match(/^(\d+):(\d{1,2})$/);
   if (colon) return Number(colon[1]) * 60 + Number(colon[2]);
   const n = Number(t);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
