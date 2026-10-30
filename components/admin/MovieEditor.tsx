@@ -272,7 +272,8 @@ export default function MovieEditor({
   }, [movie?.id]);
   const logoPreview = useObjectUrl(logo);
 
-  useEffect(() => () => uploadRef.current?.abort(), []);
+  // Leaving the page keeps the partial upload so it can be resumed later.
+  useEffect(() => () => uploadRef.current?.pause(), []);
 
   const previewEdit: VideoEdit = { ...d.edit, logoUrl: logoPreview ?? d.edit.logoUrl };
   const blurs = d.edit.blurs ?? [];

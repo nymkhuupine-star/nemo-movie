@@ -27,7 +27,8 @@ function SlotRow({
   const inputRef = useRef<HTMLInputElement>(null);
   const captionRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => uploadRef.current?.abort(), []);
+  // Leaving the page keeps the partial upload so it can be resumed later.
+  useEffect(() => () => uploadRef.current?.pause(), []);
 
   const upload = async (file: File) => {
     setError("");
