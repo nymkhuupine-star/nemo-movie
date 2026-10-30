@@ -76,7 +76,10 @@ export default function AuthModal() {
         closeAuth();
       } else if (tab === "register") {
         // Account + confirmation email are created on the server (Resend).
-        const res = await registerUser(email, password);
+        const form = new FormData();
+        form.set("email", email);
+        form.set("password", password);
+        const res = await registerUser(form);
         if (!res.ok) throw new Error(res.error);
         setPassword("");
         setConfirm("");
