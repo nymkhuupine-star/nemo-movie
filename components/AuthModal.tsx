@@ -1,18 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useApp } from "./AppProvider";
+import { useApp, type AuthTab } from "./AppProvider";
+import { authErrorMessage, getBrowserClient } from "@/lib/supabase-browser";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-line bg-surface-2 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-accent/60";
+const MIN_PASSWORD = 6;
+
+const TITLES: Record<AuthTab, string> = {
+  login: "Нэвтрэх",
+  register: "Бүртгүүлэх",
+  forgot: "Нууц үг сэргээх",
+};
 
 export default function AuthModal() {
-  const { authOpen, openAuth, closeAuth, login } = useApp();
+  const { authOpen, openAuth, closeAuth } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     if (!authOpen) return;
@@ -26,34 +35,76 @@ export default function AuthModal() {
   }, [authOpen, closeAuth]);
 
   if (!authOpen) return null;
-  const isRegister = authOpen === "register";
+  const tab = authOpen;
 
-  const switchTab = (tab: "login" | "register") => {
+  const switchTab = (next: AuthTab) => {
     setError("");
     setNotice("");
-    openAuth(tab);
+    openAuth(next);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       setError("Имэйл хаягаа зөв оруулна уу.");
       return;
     }
-    if (!/^\d{4}$/.test(password)) {
-      setError("Нууц үг 4 оронтой тоо байх ёстой.");
+    if (tab !== "forgot" && password.length < MIN_PASSWORD) {
+      setError(`Нууц үг хамгийн багадаа ${MIN_PASSWORD} тэмдэгт байна.`);
       return;
     }
-    if (isRegister && password !== confirm) {
+    if (tab === "register" && password !== confirm) {
       setError("Нууц үг таарахгүй байна.");
       return;
     }
-    // Demo only: no backend yet, the session is kept in localStorage.
-    login(email);
-    setPassword("");
-    setConfirm("");
-    closeAuth();
+
+    const supabase = getBrowserClient();
+    if (!supabase) {
+      setError("Нэвтрэх систем тохируулагдаагүй байна.");
+      return;
+    }
+
+    setPending(true);
+    try {
+      if (tab === "login") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setPassword("");
+        closeAuth();
+      } else if (tab === "register") {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        setPassword("");
+        setConfirm("");
+        if (data.session) {
+          closeAuth();
+        } else {
+          setNotice(
+            "Бүртгэл үүслээ! Имэйл рүү тань баталгаажуулах холбоос илгээлээ.",
+          );
+        }
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setNotice(
+          "Хэрэв энэ имэйлээр бүртгэл байгаа бол нууц үг сэргээх холбоос илгээлээ. Имэйлээ шалгана уу.",
+        );
+      }
+    } catch (err) {
+      setError(
+        authErrorMessage(err instanceof Error ? err.message : String(err)),
+      );
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -62,13 +113,11 @@ export default function AuthModal() {
       onMouseDown={(e) => e.target === e.currentTarget && closeAuth()}
       role="dialog"
       aria-modal="true"
-      aria-label={isRegister ? "Бүртгүүлэх" : "Нэвтрэх"}
+      aria-label={TITLES[tab]}
     >
       <div className="animate-pop-in w-full max-w-[400px] rounded-3xl border border-line bg-[#0e0e0e] p-6 shadow-2xl sm:p-7">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">
-            {isRegister ? "Бүртгүүлэх" : "Нэвтрэх"}
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">{TITLES[tab]}</h2>
           <button
             type="button"
             onClick={closeAuth}
@@ -79,20 +128,26 @@ export default function AuthModal() {
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 rounded-full border border-line bg-surface p-1">
-          {(["login", "register"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => switchTab(tab)}
-              className={`h-9 rounded-full text-sm font-semibold transition-colors ${
-                authOpen === tab ? "btn-accent" : "text-white/60 hover:text-white"
-              }`}
-            >
-              {tab === "login" ? "Нэвтрэх" : "Бүртгүүлэх"}
-            </button>
-          ))}
-        </div>
+        {tab === "forgot" ? (
+          <p className="mt-3 text-sm leading-relaxed text-white/60">
+            Бүртгэлтэй имэйлээ оруулна уу. Нууц үг шинэчлэх холбоос илгээнэ.
+          </p>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 rounded-full border border-line bg-surface p-1">
+            {(["login", "register"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => switchTab(t)}
+                className={`h-9 rounded-full text-sm font-semibold transition-colors ${
+                  tab === t ? "btn-accent" : "text-white/60 hover:text-white"
+                }`}
+              >
+                {TITLES[t]}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={submit} className="mt-5 space-y-4">
           <label className="block">
@@ -106,45 +161,42 @@ export default function AuthModal() {
               className={INPUT}
             />
           </label>
-          <label className="block">
-            <span className="mb-2 block text-sm text-white/60">
-              Нууц үг (4 орон)
-            </span>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={password}
-              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
-              placeholder="••••"
-              autoComplete={isRegister ? "new-password" : "current-password"}
-              className={`${INPUT} tracking-[0.3em]`}
-            />
-          </label>
-          {isRegister && (
+
+          {tab !== "forgot" && (
+            <label className="block">
+              <span className="mb-2 block text-sm text-white/60">
+                Нууц үг ({MIN_PASSWORD}+ тэмдэгт)
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+                autoComplete={tab === "register" ? "new-password" : "current-password"}
+                className={INPUT}
+              />
+            </label>
+          )}
+          {tab === "register" && (
             <label className="block">
               <span className="mb-2 block text-sm text-white/60">
                 Нууц үг давтах
               </span>
               <input
                 type="password"
-                inputMode="numeric"
-                maxLength={4}
                 value={confirm}
-                onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
-                placeholder="••••"
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••"
                 autoComplete="new-password"
-                className={`${INPUT} tracking-[0.3em]`}
+                className={INPUT}
               />
             </label>
           )}
 
-          {!isRegister && (
+          {tab === "login" && (
             <button
               type="button"
-              onClick={() =>
-                setNotice("Нууц үг сэргээх холбоосыг имэйлээр илгээх болно.")
-              }
+              onClick={() => switchTab("forgot")}
               className="text-sm font-medium text-accent-light hover:underline"
             >
               Нууц үг мартсан уу?
@@ -152,14 +204,29 @@ export default function AuthModal() {
           )}
 
           {error && <p className="text-sm text-hot">{error}</p>}
-          {notice && <p className="text-sm text-white/60">{notice}</p>}
+          {notice && <p className="text-sm text-accent-light">{notice}</p>}
 
           <button
             type="submit"
-            className="btn-accent h-11 w-full rounded-xl text-sm font-semibold transition-transform hover:scale-[1.01]"
+            disabled={pending}
+            className="btn-accent h-11 w-full rounded-xl text-sm font-semibold transition-transform hover:scale-[1.01] disabled:opacity-60"
           >
-            {isRegister ? "Бүртгүүлэх" : "Нэвтрэх"}
+            {pending
+              ? "Түр хүлээнэ үү…"
+              : tab === "forgot"
+                ? "Холбоос илгээх"
+                : TITLES[tab]}
           </button>
+
+          {tab === "forgot" && (
+            <button
+              type="button"
+              onClick={() => switchTab("login")}
+              className="w-full text-sm text-white/60 hover:text-white"
+            >
+              ← Нэвтрэх рүү буцах
+            </button>
+          )}
         </form>
       </div>
     </div>
