@@ -27,28 +27,30 @@ export type MovieOption = {
   genre: string;
   episodes: number | null;
   featured: boolean;
+  trending: boolean;
   hero_order: number | null;
+  trend_order: number | null;
   poster_url: string | null;
   hue: number;
 };
 
-/** Lightweight movie list for selects and the hero editor. */
+/** Lightweight movie list for selects and the order editors. */
 export async function adminMovieOptions(): Promise<MovieOption[]> {
   const admin = getAdminClient();
   if (!admin) return [];
-  const { data, error } = await admin
-    .from("movies")
-    .select("id, title, genre, episodes, featured, hero_order, poster_url, hue")
-    .order("title");
-  if (!error) return data as MovieOption[];
-
-  // hero_order doesn't exist until admin.sql has been run.
-  const fallback = await admin
-    .from("movies")
-    .select("id, title, genre, episodes, featured, poster_url, hue")
-    .order("title");
-  return ((fallback.data ?? []) as Omit<MovieOption, "hero_order">[]).map((m) => ({
-    ...m,
-    hero_order: null,
+  const { data, error } = await admin.from("movies").select("*").order("title");
+  if (error) return [];
+  return (data as Partial<MovieOption>[]).map((m) => ({
+    id: m.id!,
+    title: m.title!,
+    genre: m.genre!,
+    episodes: m.episodes ?? null,
+    featured: Boolean(m.featured),
+    trending: Boolean(m.trending),
+    // Order columns may not exist before admin.sql / admin2.sql are run.
+    hero_order: m.hero_order ?? null,
+    trend_order: m.trend_order ?? null,
+    poster_url: m.poster_url ?? null,
+    hue: m.hue ?? 280,
   }));
 }

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 import { isActive, listEntitlements } from "@/lib/access";
 import { adminMovieOptions, adminPlans } from "@/lib/admin-data";
@@ -204,12 +203,11 @@ async function UserDetail({ params, searchParams }: Props) {
 export default function AdminUserPage(props: Props) {
   return (
     <>
-      <AdminHeader />
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
         <Link href="/admin/users" className="text-sm text-white/60 hover:text-white">
           ← Хэрэглэгчид
         </Link>
-        <h1 className="mt-3 mb-6 text-2xl font-bold tracking-tight">Хэрэглэгч</h1>
+        <h1 className="mt-3 mb-6 text-[28px] font-bold tracking-tight">Хэрэглэгч</h1>
         <Suspense fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}>
           <UserDetail {...props} />
         </Suspense>

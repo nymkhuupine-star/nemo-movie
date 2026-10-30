@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import { assertAdmin } from "@/lib/admin-guard";
 import { activeEntitlementsByUser, formatDate, listAllUsers } from "@/lib/admin-users";
 
@@ -128,9 +127,8 @@ async function UsersTable({
 export default function AdminUsersPage({ searchParams }: PageProps<"/admin/users">) {
   return (
     <>
-      <AdminHeader />
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
-        <h1 className="mb-6 text-2xl font-bold tracking-tight">Хэрэглэгчид</h1>
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
+        <h1 className="mb-6 text-[28px] font-bold tracking-tight">Хэрэглэгчид</h1>
         <Suspense fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}>
           <UsersTable searchParams={searchParams} />
         </Suspense>

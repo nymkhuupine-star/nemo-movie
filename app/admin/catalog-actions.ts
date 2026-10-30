@@ -82,54 +82,95 @@ export async function deleteGenre(formData: FormData) {
   redirect(`/admin/genres?notice=${error ? "error" : "deleted"}`);
 }
 
-/* ---------- hero ---------- */
+/* ---------- visibility ---------- */
 
-async function featuredIds(): Promise<string[]> {
+/** Shows or hides a movie on the site (the "Сайт дээр" switch). */
+export async function setMovieHidden(
+  movieId: string,
+  hidden: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const { error } = await db()
+    .from("movies")
+    .update({ is_hidden: hidden })
+    .eq("id", movieId);
+  if (error) {
+    return {
+      ok: false,
+      error: error.message.includes("is_hidden")
+        ? "Supabase дээр supabase/admin2.sql-ийг ажиллуулна уу."
+        : error.message,
+    };
+  }
+  updateTag(MOVIES_TAG);
+  return { ok: true };
+}
+
+/* ---------- featured / trending order ---------- */
+
+// "featured" = home hero; "trending" = the trending row.
+const ORDER = {
+  featured: { flag: "featured", column: "hero_order" },
+  trending: { flag: "trending", column: "trend_order" },
+} as const;
+type OrderKind = keyof typeof ORDER;
+
+function orderKind(formData: FormData): OrderKind {
+  return str(formData, "kind") === "trending" ? "trending" : "featured";
+}
+
+async function orderedIds(kind: OrderKind): Promise<string[]> {
+  const { flag, column } = ORDER[kind];
   const { data } = await db()
     .from("movies")
-    .select("id, hero_order, created_at")
-    .eq("featured", true)
-    .order("hero_order", { ascending: true, nullsFirst: false })
+    .select("id, created_at")
+    .eq(flag, true)
+    .order(column, { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
   return ((data ?? []) as { id: string }[]).map((m) => m.id);
 }
 
-async function writeOrder(ids: string[]) {
+async function writeOrder(kind: OrderKind, ids: string[]) {
+  const { flag, column } = ORDER[kind];
   await Promise.all(
     ids.map((id, i) =>
-      db().from("movies").update({ featured: true, hero_order: i + 1 }).eq("id", id),
+      db().from("movies").update({ [flag]: true, [column]: i + 1 }).eq("id", id),
     ),
   );
 }
 
-export async function heroAdd(formData: FormData) {
+export async function orderAdd(formData: FormData) {
   await requireAdmin();
+  const kind = orderKind(formData);
   const id = str(formData, "movieId");
-  if (id) await writeOrder([...(await featuredIds()).filter((x) => x !== id), id]);
+  if (id) await writeOrder(kind, [...(await orderedIds(kind)).filter((x) => x !== id), id]);
   updateTag(MOVIES_TAG);
-  redirect("/admin/hero");
+  redirect(`/admin/order/${kind}`);
 }
 
-export async function heroRemove(formData: FormData) {
+export async function orderRemove(formData: FormData) {
   await requireAdmin();
+  const kind = orderKind(formData);
+  const { flag, column } = ORDER[kind];
   const id = str(formData, "movieId");
-  await db().from("movies").update({ featured: false, hero_order: null }).eq("id", id);
-  await writeOrder((await featuredIds()).filter((x) => x !== id));
+  await db().from("movies").update({ [flag]: false, [column]: null }).eq("id", id);
+  await writeOrder(kind, (await orderedIds(kind)).filter((x) => x !== id));
   updateTag(MOVIES_TAG);
-  redirect("/admin/hero");
+  redirect(`/admin/order/${kind}`);
 }
 
-export async function heroMove(formData: FormData) {
+export async function orderMove(formData: FormData) {
   await requireAdmin();
+  const kind = orderKind(formData);
   const id = str(formData, "movieId");
   const dir = str(formData, "dir") === "up" ? -1 : 1;
-  const ids = await featuredIds();
+  const ids = await orderedIds(kind);
   const i = ids.indexOf(id);
   const j = i + dir;
   if (i >= 0 && j >= 0 && j < ids.length) {
     [ids[i], ids[j]] = [ids[j], ids[i]];
-    await writeOrder(ids);
+    await writeOrder(kind, ids);
   }
   updateTag(MOVIES_TAG);
-  redirect("/admin/hero");
+  redirect(`/admin/order/${kind}`);
 }

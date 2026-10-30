@@ -28,6 +28,10 @@ export type Movie = {
   genreName?: string;
   /** Position in the home page hero (lower first). */
   heroOrder?: number;
+  /** Position in the trending row (lower first). */
+  trendOrder?: number;
+  /** Hidden from the site (admin only). */
+  hidden?: boolean;
 };
 
 export type Plan = {
@@ -121,7 +125,11 @@ export function genreLabel(movie: Movie): string {
 }
 
 export function filterBySlug(movies: Movie[], slug: string): Movie[] {
-  if (slug === "trending") return movies.filter((m) => m.trending);
+  if (slug === "trending") {
+    return movies
+      .filter((m) => m.trending)
+      .sort((a, b) => (a.trendOrder ?? 1e9) - (b.trendOrder ?? 1e9));
+  }
   if (slug === "new") return movies.filter((m) => m.isNew);
   return movies.filter((m) => m.genre === slug);
 }
