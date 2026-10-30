@@ -7,7 +7,7 @@ export default function AdminHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-black/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1200px] items-center gap-4 px-4 sm:px-6">
-        <Logo />
+        <Logo variant="dark" />
         <span className="rounded-md border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-light">
           Admin
         </span>

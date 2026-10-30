@@ -18,7 +18,7 @@ export default function Poster({
 }) {
   if (movie.poster) {
     return (
-      <div className={`relative overflow-hidden ${className}`}>
+      <div className={`keep-dark relative overflow-hidden ${className}`}>
         <Image
           src={movie.poster}
           alt={movie.title}
@@ -36,7 +36,7 @@ export default function Poster({
     <div
       role="img"
       aria-label={movie.title}
-      className={`relative overflow-hidden ${className}`}
+      className={`keep-dark relative overflow-hidden ${className}`}
       style={{
         background: `radial-gradient(120% 70% at 50% 15%, hsl(${h} 70% 55% / 0.85), transparent 60%),
           radial-gradient(90% 60% at 80% 85%, hsl(${(h + 40) % 360} 80% 45% / 0.6), transparent 70%),
