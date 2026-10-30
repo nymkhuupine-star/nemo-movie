@@ -7,17 +7,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children, modal }: LayoutProps<"/admin">) {
   return (
     <div className="admin-theme min-h-screen flex-1 lg:flex">
       <Suspense fallback={null}>
         <AdminSidebar />
       </Suspense>
       <div className="min-w-0 flex-1">{children}</div>
+      {modal}
     </div>
   );
 }

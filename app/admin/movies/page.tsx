@@ -78,12 +78,7 @@ async function Movies({
         <div className="rounded-2xl border border-line bg-surface p-12 text-center">
           <p className="text-white/70">Одоогоор кино алга байна.</p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/admin/movies/new"
-              className="btn-accent inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold"
-            >
-              + Кино нэмэх
-            </Link>
+            <NewMovieButton genres={genres} />
             <form action={seedSampleMovies}>
               <button className="h-10 rounded-xl border border-line px-5 text-sm text-white/80 hover:text-white">
                 40 жишээ кино оруулах
