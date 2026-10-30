@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useApp, type AuthTab } from "./AppProvider";
 import { authErrorMessage, getBrowserClient } from "@/lib/supabase-browser";
+import { registerUser, requestPasswordReset } from "@/app/auth-actions";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-line bg-surface-2 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-accent/60";
@@ -74,26 +75,17 @@ export default function AuthModal() {
         setPassword("");
         closeAuth();
       } else if (tab === "register") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
+        // Account + confirmation email are created on the server (Resend).
+        const res = await registerUser(email, password);
+        if (!res.ok) throw new Error(res.error);
         setPassword("");
         setConfirm("");
-        if (data.session) {
-          closeAuth();
-        } else {
-          setNotice(
-            "Бүртгэл үүслээ! Имэйл рүү тань баталгаажуулах холбоос илгээлээ.",
-          );
-        }
+        setNotice(
+          "Бүртгэл үүслээ! Имэйл рүү тань баталгаажуулах холбоос илгээлээ.",
+        );
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
-        if (error) throw error;
+        const res = await requestPasswordReset(email);
+        if (!res.ok) throw new Error(res.error);
         setNotice(
           "Хэрэв энэ имэйлээр бүртгэл байгаа бол нууц үг сэргээх холбоос илгээлээ. Имэйлээ шалгана уу.",
         );

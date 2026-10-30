@@ -21,8 +21,8 @@ export default function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  // The emailed link lands here with a recovery token in the URL hash; the
-  // Supabase client turns it into a session and fires PASSWORD_RECOVERY.
+  // The emailed link carries ?token_hash=…&type=recovery; verifying it signs
+  // the user in for this one purpose so they can set a new password.
   useEffect(() => {
     const supabase = getBrowserClient();
     if (!supabase) {
@@ -30,6 +30,19 @@ export default function ResetPasswordForm() {
       setStage("invalid");
       return;
     }
+    const tokenHash = new URLSearchParams(window.location.search).get("token_hash");
+    if (tokenHash) {
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: "recovery" })
+        .then(({ error }) => {
+          // Single-use token: drop it from the address bar either way.
+          window.history.replaceState(null, "", "/reset-password");
+          setStage(error ? "invalid" : "ready");
+        });
+      return;
+    }
+
+    // Fallback for links that put the session in the URL hash.
     const hash = new URLSearchParams(window.location.hash.slice(1));
     if (hash.get("error")) {
       setStage("invalid");
