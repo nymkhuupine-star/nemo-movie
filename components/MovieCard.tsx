@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
-import { formatPrice, getGenreName, type Movie } from "@/lib/movies";
+import { formatPrice, genreLabel, type Movie } from "@/lib/movies";
 
 export default function MovieCard({ movie }: { movie: Movie }) {
   return (
@@ -58,7 +58,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
             {movie.title}
           </h3>
           <p className="mt-0.5 text-xs text-muted">
-            {getGenreName(movie.genre)} · {movie.year}
+            {genreLabel(movie)} · {movie.year}
           </p>
         </Link>
         <FavoriteButton id={movie.id} className="mt-0.5 text-base" />

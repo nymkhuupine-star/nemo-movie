@@ -1,218 +1,156 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
-import DeleteMovieButton from "@/components/admin/DeleteMovieButton";
-import Poster from "@/components/Poster";
-import { seedSampleMovies } from "./actions";
 import { assertAdmin } from "@/lib/admin-guard";
-import { rowToMovie, type MovieRow } from "@/lib/data";
-import { formatPrice, getGenreName } from "@/lib/movies";
-import { getAdminClient, supabaseStatus } from "@/lib/supabase";
+import { activeEntitlementsByUser, formatDate, listAllUsers } from "@/lib/admin-users";
+import { getAdminClient } from "@/lib/supabase";
 
-const NOTICES: Record<string, string> = {
-  saved: "Хадгаллаа.",
-  deleted: "Устгалаа.",
-  seeded: "Жишээ кинонуудыг нэмлээ.",
-};
+const DAY = 24 * 60 * 60 * 1000;
 
-function SetupCard({ children }: { children: React.ReactNode }) {
+function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-price/30 bg-price/5 p-5 text-sm leading-relaxed text-white/75">
-      {children}
+    <div className="rounded-2xl border border-line bg-surface p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-white/40">{hint}</p>}
     </div>
   );
 }
 
-async function Dashboard({
-  searchParams,
-}: {
-  searchParams: PageProps<"/admin">["searchParams"];
-}) {
+function Card({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-line bg-surface">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {href && (
+          <Link href={href} className="text-xs text-accent-light hover:underline">
+            Бүгдийг харах →
+          </Link>
+        )}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+/** Everything the dashboard shows, computed outside render. */
+async function loadDashboard() {
+  const admin = getAdminClient()!;
+  const since30 = new Date(Date.now() - 30 * DAY).toISOString();
+  const [moviesRes, videosRes, playsRes, users, entitlements] = await Promise.all([
+    admin.from("movies").select("id, title, episodes"),
+    admin.from("videos").select("id", { count: "exact", head: true }),
+    admin.from("play_events").select("movie_id, created_at").gte("created_at", since30),
+    listAllUsers(),
+    activeEntitlementsByUser(),
+  ]);
+
+  const movies = (moviesRes.data ?? []) as { id: string; title: string; episodes: number | null }[];
+  const titles = new Map(movies.map((m) => [m.id, m.title]));
+  const plays = (playsRes.data ?? []) as { movie_id: string; created_at: string }[];
+  const week = Date.now() - 7 * DAY;
+
+  const subscribers = [...entitlements.values()].filter((list) =>
+    list.some((e) => e.kind === "subscription"),
+  ).length;
+  const newUsers = users.filter((u) => new Date(u.created_at).getTime() > week).length;
+  const plays7 = plays.filter((p) => new Date(p.created_at).getTime() > week).length;
+
+  const counts = new Map<string, number>();
+  for (const p of plays) counts.set(p.movie_id, (counts.get(p.movie_id) ?? 0) + 1);
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const missing = [
+    playsRes.error && "play_events",
+    videosRes.error && "videos",
+  ].filter(Boolean);
+
+  return { movies, titles, plays, users, entitlements, subscribers, newUsers, plays7, top, missing, videoCount: videosRes.count ?? 0 };
+}
+
+async function Dashboard() {
   await assertAdmin();
-  const params = await searchParams;
-  const notice = Object.keys(NOTICES).find((k) => params[k]);
-
-  const status = supabaseStatus();
-  const client = getAdminClient();
-  if (!client) {
-    return (
-      <SetupCard>
-        <p className="font-semibold text-white">Supabase холбогдоогүй байна</p>
-        <p className="mt-2">
-          Төслийн хавтасны <code>.env.local</code> файлд дараах түлхүүрүүдийг
-          оруулаад dev server-ээ дахин асаана уу:
-        </p>
-        <ul className="mt-2 space-y-1 font-mono text-xs">
-          <li>{status.url ? "✓" : "✗"} NEXT_PUBLIC_SUPABASE_URL</li>
-          <li>{status.anonKey ? "✓" : "✗"} NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
-          <li>{status.serviceKey ? "✓" : "✗"} SUPABASE_SERVICE_ROLE_KEY</li>
-        </ul>
-      </SetupCard>
-    );
+  if (!getAdminClient()) {
+    return <p className="text-sm text-hot">Supabase тохируулаагүй байна.</p>;
   }
-
-  const { data, error } = await client
-    .from("movies")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    return (
-      <SetupCard>
-        <p className="font-semibold text-white">movies хүснэгт олдсонгүй</p>
-        <p className="mt-2">
-          Supabase → SQL Editor → New query дээр төслийн{" "}
-          <code>supabase/schema.sql</code> файлын агуулгыг хуулж Run дарна уу.
-          Дараа нь энэ хуудсыг дахин ачаална.
-        </p>
-        <p className="mt-2 font-mono text-xs text-white/50">{error.message}</p>
-      </SetupCard>
-    );
-  }
-
-  const movies = (data as MovieRow[]).map(rowToMovie);
-  const stats = [
-    { label: "Нийт", value: movies.length },
-    { label: "Кино", value: movies.filter((m) => !m.episodes).length },
-    { label: "Цуврал", value: movies.filter((m) => m.episodes).length },
-    { label: "Онцлох", value: movies.filter((m) => m.featured).length },
-  ];
+  const { movies, titles, plays, users, entitlements, subscribers, newUsers, plays7, top, missing, videoCount } =
+    await loadDashboard();
 
   return (
     <>
-      {notice && (
-        <p className="mb-5 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm text-accent-light">
-          {NOTICES[notice]}
+      {missing.length > 0 && (
+        <p className="mb-5 rounded-xl border border-price/30 bg-price/5 px-4 py-2.5 text-sm text-white/75">
+          Зарим хүснэгт алга ({missing.join(", ")}). Supabase SQL Editor дээр{" "}
+          <code>supabase/admin.sql</code>-ийг ажиллуулна уу.
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-2xl border border-line bg-surface p-4"
-          >
-            <p className="text-xs text-muted">{s.label}</p>
-            <p className="mt-1 text-2xl font-bold">{s.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Stat label="Хэрэглэгч" value={users.length} hint={`+${newUsers} энэ 7 хоногт`} />
+        <Stat label="Идэвхтэй гишүүнчлэл" value={subscribers} />
+        <Stat label="Үзэлт (7 хоног)" value={plays7} hint={`${plays.length} — 30 хоногт`} />
+        <Stat
+          label="Кино / цуврал"
+          value={`${movies.filter((m) => !m.episodes).length} / ${movies.filter((m) => m.episodes).length}`}
+          hint={`${videoCount} видео upload хийсэн`}
+        />
       </div>
 
-      {movies.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-10 text-center">
-          <p className="text-white/70">Одоогоор кино алга байна.</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/admin/movies/new"
-              className="btn-accent inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
-            >
-              + Шинэ кино
-            </Link>
-            <form action={seedSampleMovies}>
-              <button
-                type="submit"
-                className="h-10 rounded-full border border-line px-5 text-sm text-white/80 hover:text-white"
-              >
-                40 жишээ кино оруулах
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Кино</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Төрөл</th>
-                <th className="hidden px-4 py-3 font-medium sm:table-cell">Үнэлгээ</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Үнэ</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell">Шошго</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {movies.map((m) => (
-                <tr key={m.id} className="hover:bg-white/[.02]">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Poster
-                        movie={m}
-                        className="h-14 w-10 shrink-0 rounded"
-                        sizes="40px"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{m.title}</p>
-                        <p className="text-xs text-muted">
-                          {m.year} ·{" "}
-                          {m.episodes ? `${m.episodes} анги` : "Кино"}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="hidden px-4 py-3 text-white/70 md:table-cell">
-                    {getGenreName(m.genre)}
-                  </td>
-                  <td className="hidden px-4 py-3 sm:table-cell">
-                    ★ {m.rating.toFixed(1)}
-                  </td>
-                  <td className="hidden px-4 py-3 text-white/70 md:table-cell">
-                    {formatPrice(m.price)}
-                  </td>
-                  <td className="hidden px-4 py-3 lg:table-cell">
-                    <div className="flex gap-1">
-                      {m.isNew && <Tag>Шинэ</Tag>}
-                      {m.featured && <Tag>Онцлох</Tag>}
-                      {m.trending && <Tag>Тренд</Tag>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/admin/movies/${m.id}`}
-                        className="h-8 rounded-lg border border-line px-3 text-xs leading-8 text-white/80 hover:text-white"
-                      >
-                        Засах
-                      </Link>
-                      <DeleteMovieButton id={m.id} title={m.title} />
-                    </div>
-                  </td>
-                </tr>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card title="Хамгийн их үзсэн (30 хоног)" href="/admin/movies">
+          {top.length ? (
+            <ol className="space-y-2 text-sm">
+              {top.map(([id, n], i) => (
+                <li key={id} className="flex items-center justify-between gap-3">
+                  <Link href={`/admin/movies/${id}`} className="truncate hover:text-accent-light">
+                    <span className="mr-2 text-white/40">{i + 1}.</span>
+                    {titles.get(id) ?? "Устгагдсан кино"}
+                  </Link>
+                  <span className="shrink-0 text-white/60">{n} үзэлт</span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted">Одоогоор үзэлт алга.</p>
+          )}
+        </Card>
+
+        <Card title="Шинэ хэрэглэгчид" href="/admin/users">
+          {users.length ? (
+            <ul className="space-y-2 text-sm">
+              {users.slice(0, 6).map((u) => (
+                <li key={u.id} className="flex items-center justify-between gap-3">
+                  <Link href={`/admin/users/${u.id}`} className="truncate hover:text-accent-light">
+                    {u.email}
+                  </Link>
+                  <span className="shrink-0 text-xs text-white/50">
+                    {entitlements.get(u.id)?.some((e) => e.kind === "subscription") && (
+                      <span className="mr-2 rounded bg-accent/15 px-1.5 py-0.5 text-accent-light">
+                        Гишүүн
+                      </span>
+                    )}
+                    {formatDate(u.created_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">Одоогоор хэрэглэгч алга.</p>
+          )}
+        </Card>
+      </div>
     </>
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/70">
-      {children}
-    </span>
-  );
-}
-
-export default function AdminPage({ searchParams }: PageProps<"/admin">) {
+export default function AdminDashboardPage() {
   return (
     <>
       <AdminHeader />
       <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight">Кинонууд</h1>
-          <Link
-            href="/admin/movies/new"
-            className="btn-accent inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
-          >
-            + Шинэ кино
-          </Link>
-        </div>
-        <Suspense
-          fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}
-        >
-          <Dashboard searchParams={searchParams} />
+        <h1 className="mb-6 text-2xl font-bold tracking-tight">Хянах самбар</h1>
+        <Suspense fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}>
+          <Dashboard />
         </Suspense>
       </div>
     </>

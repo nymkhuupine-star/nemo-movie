@@ -6,7 +6,7 @@ import MovieForm from "@/components/admin/MovieForm";
 import VideoManager from "@/components/admin/VideoManager";
 import { assertAdmin } from "@/lib/admin-guard";
 import { bunnyConfigured } from "@/lib/bunny";
-import { rowToMovie, type MovieRow } from "@/lib/data";
+import { getGenres, rowToMovie, type MovieRow } from "@/lib/data";
 import { getAdminClient } from "@/lib/supabase";
 import { videoSlots } from "@/lib/videos";
 
@@ -91,7 +91,7 @@ async function Editor({ params, searchParams }: Props) {
           Хадгаллаа.
         </p>
       )}
-      <MovieForm movie={movie} />
+      <MovieForm movie={movie} genres={await getGenres()} />
       <section className="mt-12">
         <h2 className="mb-1 text-xl font-bold tracking-tight">Видео</h2>
         <p className="mb-4 text-sm text-muted">
@@ -109,7 +109,7 @@ export default function EditMoviePage(props: Props) {
     <>
       <AdminHeader />
       <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
-        <Link href="/admin" className="text-sm text-white/60 hover:text-white">
+        <Link href="/admin/movies" className="text-sm text-white/60 hover:text-white">
           ← Кинонууд
         </Link>
         <h1 className="mt-3 mb-6 text-2xl font-bold tracking-tight">

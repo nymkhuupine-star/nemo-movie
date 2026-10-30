@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Poster from "./Poster";
-import { getGenreName, type Movie } from "@/lib/movies";
+import { genreLabel, type Movie } from "@/lib/movies";
 
 function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
   return (
@@ -32,7 +32,7 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
       <div className="px-3 pt-4 pb-3">
         <p className="truncate text-sm font-bold">{movie.title}</p>
         <p className="mt-1 text-[11px] font-medium text-accent-light">
-          {getGenreName(movie.genre)} · {movie.year}
+          {genreLabel(movie)} · {movie.year}
         </p>
       </div>
     </Link>

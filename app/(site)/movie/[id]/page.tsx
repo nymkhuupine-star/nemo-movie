@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import MovieDetail, { MovieDetailSkeleton } from "@/components/MovieDetail";
 import MovieRow from "@/components/MovieRow";
-import { getGenreName } from "@/lib/movies";
+import { genreLabel } from "@/lib/movies";
 import { getMovie, getMovies, movieIdParams } from "@/lib/data";
 
 type Params = PageProps<"/movie/[id]">["params"];
@@ -38,7 +38,7 @@ async function Content({ params }: { params: Params }) {
         <MovieDetail movie={movie} />
       </div>
       <MovieRow
-        title={`Төстэй: ${getGenreName(movie.genre)}`}
+        title={`Төстэй: ${genreLabel(movie)}`}
         href={`/browse/${movie.genre}`}
         movies={related}
       />

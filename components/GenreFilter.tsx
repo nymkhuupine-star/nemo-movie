@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { MovieGrid, SectionTitle } from "./MovieRow";
-import { GENRES, type Movie } from "@/lib/movies";
+import type { Genre, Movie } from "@/lib/movies";
 
 /**
  * Genre chips on the home page. "Бүгд" shows the server-rendered rows passed
@@ -11,13 +11,15 @@ import { GENRES, type Movie } from "@/lib/movies";
  */
 export default function GenreFilter({
   movies,
+  genres,
   children,
 }: {
   movies: Movie[];
+  genres: Genre[];
   children: React.ReactNode;
 }) {
   const [active, setActive] = useState("all");
-  const genre = GENRES.find((g) => g.slug === active);
+  const genre = genres.find((g) => g.slug === active);
   const filtered = genre ? movies.filter((m) => m.genre === genre.slug) : [];
 
   const chip = (selected: boolean) =>
@@ -37,7 +39,7 @@ export default function GenreFilter({
         >
           Бүгд
         </button>
-        {GENRES.map((g) => (
+        {genres.map((g) => (
           <button
             key={g.slug}
             type="button"

@@ -1,8 +1,20 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { getPublicClient } from "./supabase";
-import { SAMPLE_MOVIES, filterByQuery, filterBySlug, type Movie } from "./movies";
+import {
+  COLLECTIONS,
+  GENRES,
+  SAMPLE_MOVIES,
+  SAMPLE_PLANS,
+  filterByQuery,
+  filterBySlug,
+  type Genre,
+  type Movie,
+  type Plan,
+} from "./movies";
 
 export const MOVIES_TAG = "movies";
+export const GENRES_TAG = "genres";
+export const PLANS_TAG = "plans";
 
 export type MovieRow = {
   id: string;
@@ -20,6 +32,7 @@ export type MovieRow = {
   poster_url: string | null;
   video_url: string | null;
   hue: number;
+  hero_order?: number | null;
   created_at: string;
 };
 
@@ -40,7 +53,56 @@ export function rowToMovie(r: MovieRow): Movie {
     poster: r.poster_url ?? undefined,
     videoUrl: r.video_url ?? undefined,
     hue: r.hue,
+    heroOrder: r.hero_order ?? undefined,
   };
+}
+
+/** Genres in display order. Falls back to the defaults until the table exists. */
+export async function getGenres(): Promise<Genre[]> {
+  "use cache";
+  cacheTag(GENRES_TAG);
+  const supabase = getPublicClient();
+  if (!supabase) {
+    cacheLife("minutes");
+    return GENRES;
+  }
+  const { data, error } = await supabase
+    .from("genres")
+    .select("slug, name")
+    .order("sort")
+    .order("name");
+  if (error) {
+    cacheLife("minutes");
+    return GENRES;
+  }
+  cacheLife("hours");
+  return data as Genre[];
+}
+
+/** Active plans for the subscription page. */
+export async function getPlans(): Promise<Plan[]> {
+  "use cache";
+  cacheTag(PLANS_TAG);
+  const supabase = getPublicClient();
+  if (!supabase) {
+    cacheLife("minutes");
+    return SAMPLE_PLANS;
+  }
+  const { data, error } = await supabase
+    .from("plans")
+    .select("*")
+    .eq("active", true)
+    .order("sort")
+    .order("price");
+  if (error) {
+    cacheLife("minutes");
+    return SAMPLE_PLANS;
+  }
+  cacheLife("hours");
+  return (data as (Plan & { badge: string | null })[]).map((p) => ({
+    ...p,
+    badge: p.badge ?? undefined,
+  }));
 }
 
 /**
@@ -50,7 +112,7 @@ export function rowToMovie(r: MovieRow): Movie {
  */
 export async function getMovies(): Promise<Movie[]> {
   "use cache";
-  cacheTag(MOVIES_TAG);
+  cacheTag(MOVIES_TAG, GENRES_TAG);
 
   const supabase = getPublicClient();
   if (!supabase) {
@@ -70,15 +132,34 @@ export async function getMovies(): Promise<Movie[]> {
     return SAMPLE_MOVIES;
   }
   cacheLife("hours");
+  const names = new Map((await getGenres()).map((g) => [g.slug, g.name]));
   // Video links are handed out per play by app/play-actions.ts, not with the catalogue.
   return (data as MovieRow[]).map((r) => ({
     ...rowToMovie(r),
+    genreName: names.get(r.genre),
     videoUrl: undefined,
   }));
 }
 
+/** Featured movies for the home hero, in the order set in /admin/hero. */
+export async function getHeroMovies(): Promise<Movie[]> {
+  const movies = await getMovies();
+  const featured = movies
+    .filter((m) => m.featured)
+    .sort((a, b) => (a.heroOrder ?? 1e9) - (b.heroOrder ?? 1e9));
+  if (featured.length) return featured;
+  // Nothing chosen yet: fall back to trending, then the newest.
+  const trending = movies.filter((m) => m.trending);
+  return trending.length ? trending : movies.slice(0, 8);
+}
+
 export async function getMovie(id: string): Promise<Movie | undefined> {
   return (await getMovies()).find((m) => m.id === id);
+}
+
+/** A genre or a collection ("trending", "new") by slug. */
+export async function getCategory(slug: string): Promise<Genre | undefined> {
+  return [...(await getGenres()), ...COLLECTIONS].find((g) => g.slug === slug);
 }
 
 export async function getMoviesBySlug(slug: string): Promise<Movie[]> {

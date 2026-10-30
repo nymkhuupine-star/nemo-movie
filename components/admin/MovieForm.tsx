@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import Poster from "@/components/Poster";
 import { saveMovie, type FormState } from "@/app/admin/actions";
-import { GENRES, type Movie } from "@/lib/movies";
+import type { Genre, Movie } from "@/lib/movies";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-line bg-surface-2 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-accent/60";
@@ -27,7 +27,13 @@ function Field({
   );
 }
 
-export default function MovieForm({ movie }: { movie?: Movie }) {
+export default function MovieForm({
+  movie,
+  genres,
+}: {
+  movie?: Movie;
+  genres: Genre[];
+}) {
   const [state, action, pending] = useActionState<FormState, FormData>(
     saveMovie,
     {},
@@ -84,7 +90,7 @@ export default function MovieForm({ movie }: { movie?: Movie }) {
               <option value="" disabled>
                 Сонгох…
               </option>
-              {GENRES.map((g) => (
+              {genres.map((g) => (
                 <option key={g.slug} value={g.slug}>
                   {g.name}
                 </option>
@@ -218,7 +224,7 @@ export default function MovieForm({ movie }: { movie?: Movie }) {
             {pending ? "Хадгалж байна…" : "Хадгалах"}
           </button>
           <Link
-            href="/admin"
+            href="/admin/movies"
             className="flex h-11 items-center rounded-full border border-line px-6 text-sm text-white/70 hover:text-white"
           >
             Болих
