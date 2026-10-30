@@ -1,27 +1,35 @@
 import Hero from "@/components/Hero";
 import GenreFilter from "@/components/GenreFilter";
 import MovieRow from "@/components/MovieRow";
-import { getMovies } from "@/lib/data";
+import { getGenres, getHeroMovies, getMovies } from "@/lib/data";
 import { filterBySlug } from "@/lib/movies";
 
-const HOME_ROWS = [
+const COLLECTION_ROWS = [
   { slug: "trending", title: "Тренд болж буй" },
   { slug: "new", title: "Шинээр нэмэгдсэн" },
-  { slug: "action", title: "Action" },
-  { slug: "drama", title: "Drama" },
-  { slug: "romance", title: "Romance" },
 ];
+// Genre rows shown under the collections (first ones that have movies).
+const GENRE_ROWS = 3;
 
 export default async function Home() {
-  const movies = await getMovies();
-  const featured = movies.filter((m) => m.featured || m.trending);
-  const heroMovies = featured.length ? featured : movies.slice(0, 8);
+  const [movies, heroMovies, genres] = await Promise.all([
+    getMovies(),
+    getHeroMovies(),
+    getGenres(),
+  ]);
+  const rows = [
+    ...COLLECTION_ROWS,
+    ...genres
+      .filter((g) => movies.some((m) => m.genre === g.slug))
+      .slice(0, GENRE_ROWS)
+      .map((g) => ({ slug: g.slug, title: g.name })),
+  ];
 
   return (
     <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
       {heroMovies.length > 0 && <Hero movies={heroMovies} />}
-      <GenreFilter movies={movies}>
-        {HOME_ROWS.map((row) => (
+      <GenreFilter movies={movies} genres={genres}>
+        {rows.map((row) => (
           <MovieRow
             key={row.slug}
             title={row.title}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
 import { useApp } from "./AppProvider";
@@ -9,10 +9,17 @@ import {
   FREE_EPISODES,
   formatDuration,
   formatPrice,
-  getGenreName,
+  genreLabel,
   type Movie,
 } from "@/lib/movies";
-import { getPlayback } from "@/app/play-actions";
+import { getMyAccess, getPlayback } from "@/app/play-actions";
+import { getBrowserClient } from "@/lib/supabase-browser";
+import type { Access } from "@/lib/access";
+
+async function accessToken(): Promise<string | undefined> {
+  const { data } = (await getBrowserClient()?.auth.getSession()) ?? { data: null };
+  return data?.session?.access_token;
+}
 
 type Playing = { title: string; kind: "embed" | "file"; url: string };
 
@@ -80,6 +87,21 @@ export default function MovieDetail({
   const [playing, setPlaying] = useState<Playing | null>(null);
   const [loading, setLoading] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [access, setAccess] = useState<Access | null>(null);
+  const unlocked = Boolean(access?.subscriptionUntil || access?.ownsMovie);
+
+  // Ask the server what this user may watch, to drop the lock icons.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = user ? await accessToken() : undefined;
+      const result = token ? await getMyAccess(movie.id, token) : null;
+      if (!cancelled) setAccess(result);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, movie.id]);
 
   const buy = () => {
     if (!user) {
@@ -90,17 +112,19 @@ export default function MovieDetail({
   };
 
   const playEpisode = async (n: number) => {
-    if (n > FREE_EPISODES) {
-      setMessage(`${n}-р ангийг үзэхийн тулд худалдаж авна уу.`);
+    const locked = !unlocked && (!movie.episodes || n > FREE_EPISODES);
+    if (locked && !user) {
+      setMessage("Үзэхийн тулд нэвтэрч, худалдаж авах эсвэл гишүүнчлэл идэвхжүүлнэ үү.");
+      openAuth("login");
       return;
     }
     setMessage("");
     setLoading(n);
     try {
-      const res = await getPlayback(movie.id, n);
+      const res = await getPlayback(movie.id, n, await accessToken());
       if (res.ok) {
         setPlaying({
-          title: `${movie.title} — ${n}-р анги`,
+          title: movie.episodes ? `${movie.title} — ${n}-р анги` : movie.title,
           kind: res.kind,
           url: res.url,
         });
@@ -154,7 +178,7 @@ export default function MovieDetail({
             href={`/browse/${movie.genre}`}
             className="rounded border border-line px-1.5 py-0.5 text-xs text-white/70 hover:text-white"
           >
-            {getGenreName(movie.genre)}
+            {genreLabel(movie)}
           </Link>
         </div>
 
@@ -163,20 +187,29 @@ export default function MovieDetail({
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          {movie.episodes ? (
+          {movie.episodes || unlocked ? (
             <button
               type="button"
               onClick={() => playEpisode(1)}
               className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
             >
-              {loading === 1 ? "Ачаалж байна…" : "▶ 1-р анги үзэх"}
+              {loading === 1
+                ? "Ачаалж байна…"
+                : movie.episodes
+                  ? "▶ 1-р анги үзэх"
+                  : "▶ Үзэх"}
             </button>
           ) : null}
+          {unlocked ? (
+            <span className="flex h-11 items-center rounded-lg border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent-light">
+              ✓ Танд эрх нээлттэй
+            </span>
+          ) : (
           <button
             type="button"
             onClick={buy}
             className={`flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-semibold ${
-              movie.episodes
+              movie.episodes || unlocked
                 ? "border border-line bg-white/5 hover:bg-white/10"
                 : "btn-accent"
             }`}
@@ -186,6 +219,7 @@ export default function MovieDetail({
               {formatPrice(movie.price)}
             </span>
           </button>
+          )}
           <FavoriteButton
             id={movie.id}
             withLabel
@@ -200,13 +234,15 @@ export default function MovieDetail({
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="font-semibold">Ангиуд</h2>
               <span className="text-xs text-muted">
-                Эхний {FREE_EPISODES} анги үнэгүй
+                {unlocked
+                  ? "Бүх анги нээлттэй"
+                  : `Эхний ${FREE_EPISODES} анги үнэгүй`}
               </span>
             </div>
             <div className="grid max-h-[220px] grid-cols-6 gap-2 overflow-y-auto pr-1 sm:grid-cols-8">
               {Array.from({ length: movie.episodes }, (_, i) => i + 1).map(
                 (n) => {
-                  const free = n <= FREE_EPISODES;
+                  const free = unlocked || n <= FREE_EPISODES;
                   return (
                     <button
                       key={n}

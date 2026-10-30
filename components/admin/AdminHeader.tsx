@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import Logo from "@/components/Logo";
+import AdminNav from "./AdminNav";
 import { logout } from "@/app/admin/actions";
 
 export default function AdminHeader() {
@@ -10,17 +11,6 @@ export default function AdminHeader() {
         <span className="rounded-md border border-accent/40 bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-light">
           Admin
         </span>
-        <nav className="ml-4 hidden items-center gap-5 text-sm text-white/60 sm:flex">
-          <Link href="/admin" className="hover:text-white">
-            Кинонууд
-          </Link>
-          <Link href="/admin/movies/new" className="hover:text-white">
-            Шинэ кино
-          </Link>
-          <Link href="/" target="_blank" className="hover:text-white">
-            Сайт ↗
-          </Link>
-        </nav>
         <form action={logout} className="ml-auto">
           <button
             type="submit"
@@ -29,6 +19,11 @@ export default function AdminHeader() {
             Гарах
           </button>
         </form>
+      </div>
+      <div className="mx-auto max-w-[1200px] px-4 pb-3 sm:px-6">
+        <Suspense fallback={<div className="h-8" />}>
+          <AdminNav />
+        </Suspense>
       </div>
     </header>
   );

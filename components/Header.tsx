@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Logo from "./Logo";
 import { useApp } from "./AppProvider";
-import { GENRES } from "@/lib/movies";
+import type { Genre } from "@/lib/movies";
 
 const NAV_LINK =
   "relative py-2 text-sm font-medium transition-colors hover:text-white";
@@ -16,7 +16,7 @@ function ActiveBar() {
   );
 }
 
-export default function Header() {
+export default function Header({ genres }: { genres: Genre[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, openAuth, logout } = useApp();
@@ -104,7 +104,7 @@ export default function Header() {
             </button>
             {genresOpen && (
               <div className="animate-fade-in absolute top-full left-0 mt-3 w-48 rounded-xl border border-line bg-surface p-1.5 shadow-2xl">
-                {GENRES.map((g) => (
+                {genres.map((g) => (
                   <Link
                     key={g.slug}
                     href={`/browse/${g.slug}`}
@@ -238,7 +238,7 @@ export default function Header() {
             </Link>
             <p className="mt-2 text-xs text-muted">Ангилал</p>
             <div className="mt-1 flex flex-wrap gap-2">
-              {GENRES.map((g) => (
+              {genres.map((g) => (
                 <Link
                   key={g.slug}
                   href={`/browse/${g.slug}`}

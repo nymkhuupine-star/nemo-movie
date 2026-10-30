@@ -10,8 +10,8 @@ import {
   createSessionToken,
   verifySessionToken,
 } from "@/lib/admin-session";
-import { MOVIES_TAG } from "@/lib/data";
-import { GENRES, SAMPLE_MOVIES } from "@/lib/movies";
+import { MOVIES_TAG, getGenres } from "@/lib/data";
+import { SAMPLE_MOVIES } from "@/lib/movies";
 import { POSTER_BUCKET, getAdminClient } from "@/lib/supabase";
 import { deleteBunnyVideosForMovie } from "@/lib/videos";
 
@@ -103,7 +103,9 @@ export async function saveMovie(
   const kind = String(formData.get("kind") ?? "movie");
 
   if (!title) return { error: "Нэр оруулна уу." };
-  if (!GENRES.some((g) => g.slug === genre)) return { error: "Төрөл сонгоно уу." };
+  if (!(await getGenres()).some((g) => g.slug === genre)) {
+    return { error: "Төрөл сонгоно уу." };
+  }
 
   const rating = num(formData.get("rating")) ?? 0;
   if (rating < 0 || rating > 10) return { error: "Үнэлгээ 0-10 хооронд байна." };
@@ -156,7 +158,7 @@ export async function deleteMovie(formData: FormData) {
   const { error } = await db().from("movies").delete().eq("id", id);
   if (error) throw new Error(explain(error.message));
   updateTag(MOVIES_TAG);
-  redirect("/admin?deleted=1");
+  redirect("/admin/movies?deleted=1");
 }
 
 /** Copies the sample catalogue into an empty movies table. */
@@ -182,7 +184,7 @@ export async function seedSampleMovies() {
   const { error } = await db().from("movies").insert(rows);
   if (error) throw new Error(explain(error.message));
   updateTag(MOVIES_TAG);
-  redirect("/admin?seeded=1");
+  redirect("/admin/movies?seeded=1");
 }
 
 function explain(message: string): string {

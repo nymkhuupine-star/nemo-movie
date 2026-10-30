@@ -3,24 +3,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { MovieGrid } from "@/components/MovieRow";
-import {
-  COLLECTIONS,
-  GENRES,
-  getGenre,
-} from "@/lib/movies";
-import { getMoviesBySlug } from "@/lib/data";
+import { COLLECTIONS } from "@/lib/movies";
+import { getCategory, getGenres, getMoviesBySlug } from "@/lib/data";
 
 const PAGE_SIZE = 24;
 
-export function generateStaticParams() {
-  return [...GENRES, ...COLLECTIONS].map((g) => ({ slug: g.slug }));
+export async function generateStaticParams() {
+  return [...(await getGenres()), ...COLLECTIONS].map((g) => ({ slug: g.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/browse/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  return { title: getGenre(slug)?.name ?? "Ангилал" };
+  return { title: (await getCategory(slug))?.name ?? "Ангилал" };
 }
 
 async function Results({
@@ -80,7 +76,7 @@ async function Content({
   searchParams,
 }: PageProps<"/browse/[slug]">) {
   const { slug } = await params;
-  const genre = getGenre(slug);
+  const genre = await getCategory(slug);
   if (!genre) notFound();
 
   return (

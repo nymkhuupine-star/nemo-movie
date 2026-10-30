@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import PlanButton from "@/components/PlanButton";
-import { PLANS } from "@/lib/movies";
+import { getPlans } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Гишүүнчлэл" };
 
-export default function SubscriptionPage() {
+export default async function SubscriptionPage() {
+  const plans = await getPlans();
   return (
     <div className="mx-auto max-w-[720px] px-4 py-14 sm:px-6 sm:py-20">
       <h1 className="text-center text-4xl font-black tracking-[-1px] sm:text-[52px]">
@@ -16,7 +17,7 @@ export default function SubscriptionPage() {
       </p>
 
       <div className="mt-12 space-y-4">
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const highlight = Boolean(plan.badge);
           return (
             <div

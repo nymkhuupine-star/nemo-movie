@@ -24,8 +24,24 @@ export type Movie = {
   videoUrl?: string;
   /** Hue (0-360) for the generated poster. */
   hue: number;
+  /** Display name of the genre, resolved from the genres table. */
+  genreName?: string;
+  /** Position in the home page hero (lower first). */
+  heroOrder?: number;
 };
 
+export type Plan = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  days: number;
+  badge?: string;
+  sort: number;
+  active: boolean;
+};
+
+/** Default genres: used until the genres table exists. */
 export const GENRES: Genre[] = [
   { slug: "action", name: "Action" },
   { slug: "animation", name: "Animation" },
@@ -99,6 +115,11 @@ export function getGenreName(slug: string): string {
   return getGenre(slug)?.name ?? slug;
 }
 
+/** Genre label for a movie, preferring the name loaded from the database. */
+export function genreLabel(movie: Movie): string {
+  return movie.genreName ?? getGenreName(movie.genre);
+}
+
 export function filterBySlug(movies: Movie[], slug: string): Movie[] {
   if (slug === "trending") return movies.filter((m) => m.trending);
   if (slug === "new") return movies.filter((m) => m.isNew);
@@ -111,7 +132,7 @@ export function filterByQuery(movies: Movie[], query: string): Movie[] {
   return movies.filter(
     (m) =>
       m.title.toLowerCase().includes(q) ||
-      getGenreName(m.genre).toLowerCase().includes(q),
+      genreLabel(m).toLowerCase().includes(q),
   );
 }
 
@@ -125,7 +146,8 @@ export function formatDuration(minutes: number): string {
   return h ? `${h}ц ${m}м` : `${m}м`;
 }
 
-export const PLANS = [
-  { id: "week", name: "7 хоногийн багц", description: "7 хоног бүх контент", price: 8900, badge: undefined },
-  { id: "month", name: "Сарын багц", description: "Сар бүх контент", price: 24900, badge: "ХЯМД" },
-] as const;
+/** Default plans: used until the plans table exists. */
+export const SAMPLE_PLANS: Plan[] = [
+  { id: "week", name: "7 хоногийн багц", description: "7 хоног бүх контент", price: 8900, days: 7, sort: 1, active: true },
+  { id: "month", name: "Сарын багц", description: "Сар бүх контент", price: 24900, days: 30, badge: "ХЯМД", sort: 2, active: true },
+];
