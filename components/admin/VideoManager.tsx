@@ -66,7 +66,8 @@ function SlotRow({
     if (!confirm(`${label}-ийн видеог устгах уу?`)) return;
     setBusy(true);
     try {
-      await removeVideo(movieId, slot.episode);
+      const res = await removeVideo(movieId, slot.episode);
+      if (!res.ok) throw new Error(res.error);
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Устгаж чадсангүй.");

@@ -228,6 +228,9 @@ export default function MovieEditor({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const uploadRef = useRef<UploadHandle | null>(null);
+  // Set once the movie row exists, so a retry after a failed upload updates
+  // that row instead of creating a duplicate.
+  const savedId = useRef<string | null>(movie?.id ?? null);
   const previewRef = useRef<HTMLVideoElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const subInput = useRef<HTMLInputElement>(null);
@@ -269,7 +272,7 @@ export default function MovieEditor({
     setBusy(true);
     setStatus("Хадгалж байна…");
     const f = new FormData();
-    if (movie) f.set("id", movie.id);
+    if (savedId.current) f.set("id", savedId.current);
     f.set("kind", kind);
     f.set("title", d.title);
     f.set("genre", d.genre);
@@ -292,11 +295,27 @@ export default function MovieEditor({
     try {
       const res = await saveMovieData(f);
       if (!res.ok) throw new Error(res.error);
+      const firstSave = !savedId.current;
+      savedId.current = res.id;
+      if (firstSave && !isEdit) {
+        try {
+          localStorage.removeItem(draftKey(kind));
+        } catch {}
+      }
 
       if (kind === "movie" && video) {
-        await uploadEpisodeVideo(res.id, 1, video, (p) => setStatus(`Бичлэг upload: ${p}%`), (h) => {
-          uploadRef.current = h;
-        });
+        try {
+          await uploadEpisodeVideo(res.id, 1, video, (p) => setStatus(`Бичлэг upload: ${p}%`), (h) => {
+            uploadRef.current = h;
+          });
+        } catch (e) {
+          throw new Error(
+            `Кино хадгалагдсан, гэхдээ бичлэг upload амжилтгүй: ${
+              e instanceof Error ? e.message : "алдаа"
+            }. “Кино нэмэх”-ийг дахин дарж оролдоно уу.`,
+          );
+        }
+        setVideo(null);
       }
       if (kind === "movie" && subtitle) {
         setStatus("Хадмал илгээж байна…");
@@ -306,6 +325,7 @@ export default function MovieEditor({
         c.set("file", subtitle);
         const r = await uploadCaption(c);
         if (!r.ok) throw new Error(`Кино хадгалагдсан ч хадмал алдаатай: ${r.error}`);
+        setSubtitle(null);
       }
       if (!isEdit) {
         try {

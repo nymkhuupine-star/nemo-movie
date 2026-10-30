@@ -21,6 +21,7 @@ export async function uploadEpisodeVideo(
   onHandle?: (h: UploadHandle) => void,
 ): Promise<void> {
   const s = await startVideoUpload(movieId, episode);
+  if (!s.ok) throw new Error(s.error);
   let aborted = false;
   try {
     await new Promise<void>((resolve, reject) => {
@@ -48,7 +49,8 @@ export async function uploadEpisodeVideo(
       });
       up.start();
     });
-    await finishVideoUpload(movieId, episode, s.videoId);
+    const done = await finishVideoUpload(movieId, episode, s.videoId);
+    if (!done.ok) throw new Error(done.error);
   } catch (e) {
     await abortVideoUpload(s.videoId).catch(() => {});
     throw aborted ? new Error("Upload цуцлагдлаа.") : e;
