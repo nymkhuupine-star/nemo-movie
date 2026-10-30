@@ -101,7 +101,10 @@ function Player({
   }, [playing.kind, edit.endSec, pjsReady]);
 
   return (
-    <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-black">
+    <div
+      data-overlay-box
+      className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-black"
+    >
       {playing.kind === "embed" ? (
         pjsReady && (
           <iframe

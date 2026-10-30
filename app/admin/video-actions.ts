@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/admin-session";
-import { addCaption, createVideo, deleteVideo, signUpload } from "@/lib/bunny";
+import { addCaption, createVideo, deleteVideo, playerUrl, signUpload } from "@/lib/bunny";
 import { getAdminClient } from "@/lib/supabase";
 import { findVideoId } from "@/lib/videos";
 
@@ -134,5 +134,16 @@ export async function uploadCaption(formData: FormData): Promise<{ ok: boolean; 
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Алдаа гарлаа." };
+  }
+}
+
+/** Signed player link for the editor preview (first episode / the movie). */
+export async function getEditorPreview(movieId: string): Promise<string | null> {
+  try {
+    await requireAdmin();
+    const videoId = await findVideoId(movieId, 1);
+    return videoId ? playerUrl(videoId, 60 * 60, undefined, false) : null;
+  } catch {
+    return null;
   }
 }

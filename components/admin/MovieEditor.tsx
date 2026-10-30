@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveMovieData } from "@/app/admin/actions";
-import { uploadCaption } from "@/app/admin/video-actions";
+import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
 import type { Genre, Movie, VideoEdit } from "@/lib/movies";
 import VideoOverlays from "@/components/VideoOverlays";
@@ -260,6 +260,16 @@ export default function MovieEditor({
   }, [d, isEdit, kind]);
 
   const videoUrl = useObjectUrl(video);
+  // Edit mode: preview the video that's already on Bunny.
+  const [savedPreview, setSavedPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!movie?.id) return;
+    let cancelled = false;
+    getEditorPreview(movie.id).then((url) => !cancelled && setSavedPreview(url));
+    return () => {
+      cancelled = true;
+    };
+  }, [movie?.id]);
   const logoPreview = useObjectUrl(logo);
 
   useEffect(() => () => uploadRef.current?.abort(), []);
@@ -577,6 +587,7 @@ export default function MovieEditor({
           </div>
           <div className="keep-dark flex justify-center rounded-xl bg-[#000]">
             <div
+              data-overlay-box
               className={`relative overflow-hidden ${
                 orientation === "h" ? "aspect-video w-full" : "aspect-[9/16] h-[420px]"
               }`}
@@ -588,6 +599,13 @@ export default function MovieEditor({
                   controls
                   className="h-full w-full object-contain"
                 />
+              ) : savedPreview ? (
+                <iframe
+                  src={savedPreview}
+                  title="Урьдчилан харах"
+                  allow="autoplay; encrypted-media; fullscreen"
+                  className="h-full w-full border-0"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-sm text-white/50">
                   {isEdit && movie?.backdrop ? (
@@ -598,10 +616,7 @@ export default function MovieEditor({
                   </span>
                 </div>
               )}
-              <VideoOverlays
-                edit={previewEdit}
-                onMoveBlur={(i, b) => setEdit({ blurs: blurs.map((x, j) => (j === i ? b : x)) })}
-              />
+              <VideoOverlays edit={previewEdit} onChange={setEdit} />
             </div>
           </div>
 
@@ -661,7 +676,10 @@ export default function MovieEditor({
                     onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
                   />
                 </div>
-                <p className="text-sm text-white/55">Дэвсгэргүй PNG / SVG лого зөвлөнө.</p>
+                <p className="text-sm text-white/55">
+                  Дэвсгэргүй PNG / SVG лого зөвлөнө. Урьдчилан харах дээр чирж зөөнө, цэнхэр
+                  бөмбөлгөөс чирж хэмжээг өөрчилнө.
+                </p>
                 {previewEdit.logoUrl && (
                   <div className="flex flex-wrap items-center gap-6">
                     <div className="flex gap-1">
@@ -676,7 +694,7 @@ export default function MovieEditor({
                         <button
                           key={p}
                           type="button"
-                          onClick={() => setEdit({ logoPos: p })}
+                          onClick={() => setEdit({ logoPos: p, logoX: undefined, logoY: undefined })}
                           className={`h-9 w-9 rounded-lg border ${
                             (d.edit.logoPos ?? "tr") === p
                               ? "border-accent bg-accent/10 text-accent-light"
@@ -692,7 +710,7 @@ export default function MovieEditor({
                       <input
                         type="range"
                         min={4}
-                        max={40}
+                        max={60}
                         value={d.edit.logoSize ?? 12}
                         onChange={(e) => setEdit({ logoSize: Number(e.target.value) })}
                         className="flex-1 accent-[var(--color-accent)]"
@@ -706,7 +724,8 @@ export default function MovieEditor({
             {tab === "blur" && (
               <div className="space-y-3">
                 <p className="text-sm text-white/60">
-                  Бичлэг дээрх хуучин лого, бичвэрийг дарна. Урьдчилан харах дээр чирж байрлуулна.
+                  Бичлэг дээрх хуучин лого, бичвэрийг дарна. Урьдчилан харах дээр чирж зөөнө,
+                  баруун доод булангийн цэнхэр бөмбөлгөөс чирж хэмжээг өөрчилнө.
                 </p>
                 {blurs.map((b, i) => (
                   <div key={i} className="grid grid-cols-2 gap-3 rounded-xl border border-line bg-surface p-3 sm:grid-cols-5 sm:items-center">
