@@ -51,10 +51,12 @@ export function rowToMovie(r: MovieRow): Movie {
 export async function getMovies(): Promise<Movie[]> {
   "use cache";
   cacheTag(MOVIES_TAG);
-  cacheLife("hours");
 
   const supabase = getPublicClient();
-  if (!supabase) return SAMPLE_MOVIES;
+  if (!supabase) {
+    cacheLife("minutes");
+    return SAMPLE_MOVIES;
+  }
 
   const { data, error } = await supabase
     .from("movies")
@@ -62,9 +64,12 @@ export async function getMovies(): Promise<Movie[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
+    // Don't keep the fallback around for long: retry soon.
     console.error("[supabase] failed to load movies:", error.message);
+    cacheLife("minutes");
     return SAMPLE_MOVIES;
   }
+  cacheLife("hours");
   return (data as MovieRow[]).map(rowToMovie);
 }
 
