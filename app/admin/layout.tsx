@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -10,5 +12,12 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="admin-theme min-h-full flex-1">{children}</div>;
+  return (
+    <div className="admin-theme min-h-screen flex-1 lg:flex">
+      <Suspense fallback={null}>
+        <AdminSidebar />
+      </Suspense>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }

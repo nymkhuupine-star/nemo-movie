@@ -1,86 +1,65 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
-import DeleteMovieButton from "@/components/admin/DeleteMovieButton";
-import Poster from "@/components/Poster";
-import { seedSampleMovies } from "../actions";
+import AdminShell, { MissingTable } from "@/components/admin/AdminShell";
+import MoviesTable, { type MovieTableRow } from "@/components/admin/MoviesTable";
+import { IconPlus, IconSparkle, IconTrend } from "@/components/admin/icons";
 import { assertAdmin } from "@/lib/admin-guard";
 import { getGenres, rowToMovie, type MovieRow } from "@/lib/data";
-import { formatPrice, genreLabel } from "@/lib/movies";
 import { getAdminClient, supabaseStatus } from "@/lib/supabase";
+import { seedSampleMovies } from "../actions";
 
 const NOTICES: Record<string, string> = {
-  saved: "Хадгаллаа.",
-  deleted: "Устгалаа.",
+  deleted: "Кино устгагдлаа.",
   seeded: "Жишээ кинонуудыг нэмлээ.",
 };
 
-function SetupCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-price/30 bg-price/5 p-5 text-sm leading-relaxed text-white/75">
-      {children}
-    </div>
+/** 1-based position among movies with the flag, by their order column. */
+function ranks(rows: MovieRow[], flag: "featured" | "trending", col: "hero_order" | "trend_order") {
+  return new Map(
+    rows
+      .filter((r) => r[flag])
+      .sort((a, b) => (a[col] ?? 1e9) - (b[col] ?? 1e9))
+      .map((r, i) => [r.id, i + 1]),
   );
 }
 
-async function Dashboard({
+async function Movies({
   searchParams,
 }: {
   searchParams: PageProps<"/admin/movies">["searchParams"];
 }) {
   await assertAdmin();
-  const params = await searchParams;
-  const notice = Object.keys(NOTICES).find((k) => params[k]);
+  const sp = await searchParams;
+  const notice = Object.keys(NOTICES).find((k) => sp[k]);
 
-  const status = supabaseStatus();
   const client = getAdminClient();
   if (!client) {
+    const s = supabaseStatus();
     return (
-      <SetupCard>
-        <p className="font-semibold text-white">Supabase холбогдоогүй байна</p>
-        <p className="mt-2">
-          Төслийн хавтасны <code>.env.local</code> файлд дараах түлхүүрүүдийг
-          оруулаад dev server-ээ дахин асаана уу:
-        </p>
-        <ul className="mt-2 space-y-1 font-mono text-xs">
-          <li>{status.url ? "✓" : "✗"} NEXT_PUBLIC_SUPABASE_URL</li>
-          <li>{status.anonKey ? "✓" : "✗"} NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
-          <li>{status.serviceKey ? "✓" : "✗"} SUPABASE_SERVICE_ROLE_KEY</li>
-        </ul>
-      </SetupCard>
+      <p className="rounded-2xl border border-price/30 bg-price/5 p-5 text-sm text-white/75">
+        Supabase холбогдоогүй байна ({s.url ? "" : "URL "}
+        {s.serviceKey ? "" : "SERVICE_ROLE_KEY"} дутуу).
+      </p>
     );
   }
 
-  const { data, error } = await client
-    .from("movies")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data, error }, genres] = await Promise.all([
+    client.from("movies").select("*").order("created_at", { ascending: false }),
+    getGenres(),
+  ]);
+  if (error) return <MissingTable name="movies хүснэгт" file="schema.sql" />;
 
-  if (error) {
-    return (
-      <SetupCard>
-        <p className="font-semibold text-white">movies хүснэгт олдсонгүй</p>
-        <p className="mt-2">
-          Supabase → SQL Editor → New query дээр төслийн{" "}
-          <code>supabase/schema.sql</code> файлын агуулгыг хуулж Run дарна уу.
-          Дараа нь энэ хуудсыг дахин ачаална.
-        </p>
-        <p className="mt-2 font-mono text-xs text-white/50">{error.message}</p>
-      </SetupCard>
-    );
-  }
+  const raw = data as MovieRow[];
+  const names = new Map(genres.map((g) => [g.slug, g.name]));
+  const featuredRank = ranks(raw, "featured", "hero_order");
+  const trendRank = ranks(raw, "trending", "trend_order");
+  const hasHiddenColumn = raw.length === 0 || "is_hidden" in raw[0];
 
-  const names = new Map((await getGenres()).map((g) => [g.slug, g.name]));
-  const movies = (data as MovieRow[]).map((r) => ({
+  const rows: MovieTableRow[] = raw.map((r) => ({
     ...rowToMovie(r),
     genreName: names.get(r.genre),
+    featuredRank: featuredRank.get(r.id),
+    trendRank: trendRank.get(r.id),
   }));
-  const stats = [
-    { label: "Нийт", value: movies.length },
-    { label: "Кино", value: movies.filter((m) => !m.episodes).length },
-    { label: "Цуврал", value: movies.filter((m) => m.episodes).length },
-    { label: "Онцлох", value: movies.filter((m) => m.featured).length },
-  ];
 
   return (
     <>
@@ -89,136 +68,60 @@ async function Dashboard({
           {NOTICES[notice]}
         </p>
       )}
+      {!hasHiddenColumn && (
+        <MissingTable name="is_hidden / trend_order багана" file="admin2.sql" />
+      )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-2xl border border-line bg-surface p-4"
-          >
-            <p className="text-xs text-muted">{s.label}</p>
-            <p className="mt-1 text-2xl font-bold">{s.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {movies.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-10 text-center">
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-line bg-surface p-12 text-center">
           <p className="text-white/70">Одоогоор кино алга байна.</p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <Link
               href="/admin/movies/new"
-              className="btn-accent inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
+              className="btn-accent inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold"
             >
-              + Шинэ кино
+              + Кино нэмэх
             </Link>
             <form action={seedSampleMovies}>
-              <button
-                type="submit"
-                className="h-10 rounded-full border border-line px-5 text-sm text-white/80 hover:text-white"
-              >
+              <button className="h-10 rounded-xl border border-line px-5 text-sm text-white/80 hover:text-white">
                 40 жишээ кино оруулах
               </button>
             </form>
           </div>
         </div>
       ) : (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Кино</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Төрөл</th>
-                <th className="hidden px-4 py-3 font-medium sm:table-cell">Үнэлгээ</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Үнэ</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell">Шошго</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {movies.map((m) => (
-                <tr key={m.id} className="hover:bg-white/[.02]">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Poster
-                        movie={m}
-                        className="h-14 w-10 shrink-0 rounded"
-                        sizes="40px"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{m.title}</p>
-                        <p className="text-xs text-muted">
-                          {m.year} ·{" "}
-                          {m.episodes ? `${m.episodes} анги` : "Кино"}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="hidden px-4 py-3 text-white/70 md:table-cell">
-                    {genreLabel(m)}
-                  </td>
-                  <td className="hidden px-4 py-3 sm:table-cell">
-                    ★ {m.rating.toFixed(1)}
-                  </td>
-                  <td className="hidden px-4 py-3 text-white/70 md:table-cell">
-                    {formatPrice(m.price)}
-                  </td>
-                  <td className="hidden px-4 py-3 lg:table-cell">
-                    <div className="flex gap-1">
-                      {m.isNew && <Tag>Шинэ</Tag>}
-                      {m.featured && <Tag>Онцлох</Tag>}
-                      {m.trending && <Tag>Тренд</Tag>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/admin/movies/${m.id}`}
-                        className="h-8 rounded-lg border border-line px-3 text-xs leading-8 text-white/80 hover:text-white"
-                      >
-                        Засах
-                      </Link>
-                      <DeleteMovieButton id={m.id} title={m.title} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <MoviesTable rows={rows} genres={genres} />
       )}
     </>
   );
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] text-white/70">
-      {children}
-    </span>
-  );
-}
+const BUTTON =
+  "inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-surface px-4 text-[15px] font-medium text-white/90 hover:bg-white/5";
 
 export default function AdminMoviesPage({ searchParams }: PageProps<"/admin/movies">) {
   return (
-    <>
-      <AdminHeader />
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight">Кинонууд</h1>
+    <AdminShell
+      title="Кино"
+      description="Кино нэмэх, засах, устгах. Өөрчлөлт шууд сайт дээр харагдана."
+      actions={
+        <>
+          <Link href="/admin/order/featured" className={BUTTON}>
+            <IconSparkle className="h-5 w-5" /> Онцлох дараалал
+          </Link>
+          <Link href="/admin/order/trending" className={BUTTON}>
+            <IconTrend className="h-5 w-5" /> Тренд дараалал
+          </Link>
           <Link
             href="/admin/movies/new"
-            className="btn-accent inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold"
+            className="btn-accent inline-flex h-11 items-center gap-2 rounded-xl px-5 text-[15px] font-semibold"
           >
-            + Шинэ кино
+            <IconPlus className="h-5 w-5" /> Кино нэмэх
           </Link>
-        </div>
-        <Suspense
-          fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}
-        >
-          <Dashboard searchParams={searchParams} />
-        </Suspense>
-      </div>
-    </>
+        </>
+      }
+    >
+      <Movies searchParams={searchParams} />
+    </AdminShell>
   );
 }

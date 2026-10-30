@@ -33,6 +33,8 @@ export type MovieRow = {
   video_url: string | null;
   hue: number;
   hero_order?: number | null;
+  trend_order?: number | null;
+  is_hidden?: boolean;
   created_at: string;
 };
 
@@ -54,6 +56,8 @@ export function rowToMovie(r: MovieRow): Movie {
     videoUrl: r.video_url ?? undefined,
     hue: r.hue,
     heroOrder: r.hero_order ?? undefined,
+    trendOrder: r.trend_order ?? undefined,
+    hidden: r.is_hidden ?? false,
   };
 }
 
@@ -134,14 +138,15 @@ export async function getMovies(): Promise<Movie[]> {
   cacheLife("hours");
   const names = new Map((await getGenres()).map((g) => [g.slug, g.name]));
   // Video links are handed out per play by app/play-actions.ts, not with the catalogue.
-  return (data as MovieRow[]).map((r) => ({
+  // Hidden movies (toggled off in /admin/movies) never reach the site.
+  return (data as MovieRow[]).filter((r) => !r.is_hidden).map((r) => ({
     ...rowToMovie(r),
     genreName: names.get(r.genre),
     videoUrl: undefined,
   }));
 }
 
-/** Featured movies for the home hero, in the order set in /admin/hero. */
+/** Featured movies for the home hero, in the order set in /admin/order/featured. */
 export async function getHeroMovies(): Promise<Movie[]> {
   const movies = await getMovies();
   const featured = movies

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
 import MovieForm from "@/components/admin/MovieForm";
 import VideoManager from "@/components/admin/VideoManager";
 import { assertAdmin } from "@/lib/admin-guard";
@@ -92,7 +91,7 @@ async function Editor({ params, searchParams }: Props) {
         </p>
       )}
       <MovieForm movie={movie} genres={await getGenres()} />
-      <section className="mt-12">
+      <section id="videos" className="mt-12 scroll-mt-8">
         <h2 className="mb-1 text-xl font-bold tracking-tight">Видео</h2>
         <p className="mb-4 text-sm text-muted">
           Видео шууд Bunny Stream руу upload хийгдэнэ. Encode дуусахад
@@ -107,12 +106,11 @@ async function Editor({ params, searchParams }: Props) {
 export default function EditMoviePage(props: Props) {
   return (
     <>
-      <AdminHeader />
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
         <Link href="/admin/movies" className="text-sm text-white/60 hover:text-white">
           ← Кинонууд
         </Link>
-        <h1 className="mt-3 mb-6 text-2xl font-bold tracking-tight">
+        <h1 className="mt-3 mb-6 text-[28px] font-bold tracking-tight">
           Кино засах
         </h1>
         <Suspense
