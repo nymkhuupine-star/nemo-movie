@@ -13,18 +13,37 @@ import {
   type Movie,
 } from "@/lib/movies";
 
-function Player({ title, onClose }: { title: string; onClose: () => void }) {
+function Player({
+  title,
+  src,
+  onClose,
+}: {
+  title: string;
+  src?: string;
+  onClose: () => void;
+}) {
   return (
     <div className="relative flex aspect-video w-full items-center justify-center bg-black">
-      <div className="text-center">
-        <div className="btn-accent mx-auto flex h-14 w-14 items-center justify-center rounded-full pl-1 text-xl">
-          ▶
+      {src ? (
+        <video
+          src={src}
+          controls
+          autoPlay
+          playsInline
+          title={title}
+          className="h-full w-full"
+        />
+      ) : (
+        <div className="text-center">
+          <div className="btn-accent mx-auto flex h-14 w-14 items-center justify-center rounded-full pl-1 text-xl">
+            ▶
+          </div>
+          <p className="mt-3 text-sm text-white/70">{title}</p>
+          <p className="mt-1 text-xs text-muted">
+            Видео холбоос нэмэгдээгүй байна
+          </p>
         </div>
-        <p className="mt-3 text-sm text-white/70">{title}</p>
-        <p className="mt-1 text-xs text-muted">
-          Видео файл холбогдоогүй байна (demo)
-        </p>
-      </div>
+      )}
       <button
         type="button"
         onClick={onClose}
@@ -82,7 +101,11 @@ export default function MovieDetail({
   return (
     <div>
       {playing ? (
-        <Player title={playing} onClose={() => setPlaying(null)} />
+        <Player
+          title={playing}
+          src={movie.videoUrl}
+          onClose={() => setPlaying(null)}
+        />
       ) : (
         <div className="relative flex h-[230px] items-center justify-center overflow-hidden sm:h-[260px]">
           {/* Blurred backdrop */}

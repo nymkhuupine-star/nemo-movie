@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MovieGrid } from "@/components/MovieRow";
-import { searchMovies } from "@/lib/movies";
+import { searchMovies } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Хайлт" };
 
@@ -12,7 +12,7 @@ async function Results({
 }) {
   const { q } = await searchParams;
   const query = (Array.isArray(q) ? q[0] : q) ?? "";
-  const results = searchMovies(query);
+  const results = await searchMovies(query);
 
   return (
     <>

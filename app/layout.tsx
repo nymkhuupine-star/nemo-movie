@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import AuthModal from "@/components/AuthModal";
 import { AppProvider } from "@/components/AppProvider";
 import "./globals.css";
 
@@ -34,13 +30,8 @@ export default function RootLayout({ children, modal }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <AppProvider>
-          <Suspense fallback={<div className="h-16" />}>
-            <Header />
-          </Suspense>
-          <main className="flex-1">{children}</main>
-          <Footer />
+          {children}
           {modal}
-          <AuthModal />
         </AppProvider>
       </body>
     </html>

@@ -4,19 +4,20 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import MovieDetail, { MovieDetailSkeleton } from "@/components/MovieDetail";
 import MovieRow from "@/components/MovieRow";
-import { MOVIES, getGenreName, getMovie } from "@/lib/movies";
+import { getGenreName } from "@/lib/movies";
+import { getMovie, getMovies, movieIdParams } from "@/lib/data";
 
 type Params = PageProps<"/movie/[id]">["params"];
 
 export function generateStaticParams() {
-  return MOVIES.map((m) => ({ id: m.id }));
+  return movieIdParams();
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/movie/[id]">): Promise<Metadata> {
   const { id } = await params;
-  const movie = getMovie(id);
+  const movie = await getMovie(id);
   return movie
     ? { title: movie.title, description: movie.description }
     : { title: "Олдсонгүй" };
@@ -24,10 +25,10 @@ export async function generateMetadata({
 
 async function Content({ params }: { params: Params }) {
   const { id } = await params;
-  const movie = getMovie(id);
+  const movie = await getMovie(id);
   if (!movie) notFound();
 
-  const related = MOVIES.filter(
+  const related = (await getMovies()).filter(
     (m) => m.genre === movie.genre && m.id !== movie.id,
   );
 

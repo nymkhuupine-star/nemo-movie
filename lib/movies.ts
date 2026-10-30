@@ -18,8 +18,10 @@ export type Movie = {
   featured?: boolean;
   trending?: boolean;
   description: string;
-  /** Optional poster image path, e.g. "/posters/1.jpg". A generated poster is shown when missing. */
+  /** Optional poster image URL. A generated poster is shown when missing. */
   poster?: string;
+  /** Optional video URL played by the player. */
+  videoUrl?: string;
   /** Hue (0-360) for the generated poster. */
   hue: number;
 };
@@ -45,7 +47,8 @@ export const COLLECTIONS: Genre[] = [
 
 export const FREE_EPISODES = 3;
 
-export const MOVIES: Movie[] = [
+/** Sample catalogue: shown until Supabase is connected, and used by the admin "seed" button. */
+export const SAMPLE_MOVIES: Movie[] = [
   { id: "1001", title: "Сүүдрийн өв залгамжлагч", genre: "action", year: 2026, rating: 9.5, price: 4900, duration: 92, isNew: true, featured: true, trending: true, hue: 145, description: "Гэр бүлээсээ хөөгдсөн залуу эцгийнхээ нууц бизнесийг өвлөн авч, өөрийг нь урвасан хүмүүсээс өшөөгөө авахаар буцаж ирнэ." },
   { id: "1002", title: "Хаан ширээний төлөөх тулаан", genre: "action", year: 2026, rating: 9.2, price: 4900, duration: 104, isNew: true, featured: true, hue: 12, description: "Хоёр том овгийн хооронд өрнөх эрх мэдлийн тэмцэлд жирийн нэгэн бүсгүй гэнэт гол дүр болж хувирна." },
   { id: "1003", title: "Тэрбумтны нууц эхнэр", genre: "romance", year: 2026, rating: 9.6, price: 4900, episodes: 52, featured: true, trending: true, hue: 330, description: "Гэрээт гэрлэлтээр эхэлсэн харилцаа жинхэнэ хайр болж хувирах болов уу? Тэрбумтан нөхөр нь эхнэрээсээ нэгэн том нууц нуусаар байдаг." },
@@ -96,20 +99,16 @@ export function getGenreName(slug: string): string {
   return getGenre(slug)?.name ?? slug;
 }
 
-export function getMovie(id: string): Movie | undefined {
-  return MOVIES.find((m) => m.id === id);
+export function filterBySlug(movies: Movie[], slug: string): Movie[] {
+  if (slug === "trending") return movies.filter((m) => m.trending);
+  if (slug === "new") return movies.filter((m) => m.isNew);
+  return movies.filter((m) => m.genre === slug);
 }
 
-export function getMoviesBySlug(slug: string): Movie[] {
-  if (slug === "trending") return MOVIES.filter((m) => m.trending);
-  if (slug === "new") return MOVIES.filter((m) => m.isNew);
-  return MOVIES.filter((m) => m.genre === slug);
-}
-
-export function searchMovies(query: string): Movie[] {
+export function filterByQuery(movies: Movie[], query: string): Movie[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return MOVIES.filter(
+  return movies.filter(
     (m) =>
       m.title.toLowerCase().includes(q) ||
       getGenreName(m.genre).toLowerCase().includes(q),

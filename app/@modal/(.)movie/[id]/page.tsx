@@ -2,17 +2,17 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import Modal from "@/components/Modal";
 import MovieDetail, { MovieDetailSkeleton } from "@/components/MovieDetail";
-import { MOVIES, getMovie } from "@/lib/movies";
+import { getMovie, movieIdParams } from "@/lib/data";
 
 type Params = PageProps<"/movie/[id]">["params"];
 
 export function generateStaticParams() {
-  return MOVIES.map((m) => ({ id: m.id }));
+  return movieIdParams();
 }
 
 async function Content({ params }: { params: Params }) {
   const { id } = await params;
-  const movie = getMovie(id);
+  const movie = await getMovie(id);
   if (!movie) notFound();
   return <MovieDetail movie={movie} inModal />;
 }

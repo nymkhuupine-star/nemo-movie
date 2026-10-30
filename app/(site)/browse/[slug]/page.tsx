@@ -7,8 +7,8 @@ import {
   COLLECTIONS,
   GENRES,
   getGenre,
-  getMoviesBySlug,
 } from "@/lib/movies";
+import { getMoviesBySlug } from "@/lib/data";
 
 const PAGE_SIZE = 24;
 
@@ -31,7 +31,7 @@ async function Results({
   searchParams: PageProps<"/browse/[slug]">["searchParams"];
 }) {
   const { page: pageParam } = await searchParams;
-  const movies = getMoviesBySlug(slug);
+  const movies = await getMoviesBySlug(slug);
   const totalPages = Math.max(1, Math.ceil(movies.length / PAGE_SIZE));
   const page = Math.min(
     totalPages,
