@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
 import { getBrowserClient } from "@/lib/supabase-browser";
 
@@ -10,6 +10,7 @@ type Stage = "checking" | "done" | "invalid";
 export default function ConfirmEmail() {
   const { openAuth } = useApp();
   const [stage, setStage] = useState<Stage>("checking");
+  const verifying = useRef(false);
 
   // Verifying the emailed token confirms the address and signs the user in.
   useEffect(() => {
@@ -20,11 +21,15 @@ export default function ConfirmEmail() {
       setStage("invalid");
       return;
     }
+    // Single-use token: verify once even if the effect runs twice (dev).
+    if (verifying.current) return;
+    verifying.current = true;
     supabase.auth
       .verifyOtp({ token_hash: tokenHash, type: "signup" })
-      .then(({ error }) => {
+      .then(async ({ error }) => {
         window.history.replaceState(null, "", "/auth/confirm");
-        setStage(error ? "invalid" : "done");
+        const { data } = await supabase.auth.getSession();
+        setStage(!error || data.session ? "done" : "invalid");
       });
   }, []);
 

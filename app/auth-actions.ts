@@ -38,12 +38,13 @@ function setupError(): AuthActionResult | null {
   return null;
 }
 
-/** Creates the account and emails a confirmation link via Resend. */
-export async function registerUser(
-  email: string,
-  password: string,
-): Promise<AuthActionResult> {
-  email = email.trim().toLowerCase();
+/**
+ * Creates the account and emails a confirmation link via Resend. Takes
+ * FormData so the password never shows up in dev server action logs.
+ */
+export async function registerUser(form: FormData): Promise<AuthActionResult> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "");
   if (!EMAIL_RE.test(email)) return { ok: false, error: "Имэйл хаягаа зөв оруулна уу." };
   if (password.length < MIN_PASSWORD) {
     return { ok: false, error: `Нууц үг хамгийн багадаа ${MIN_PASSWORD} тэмдэгт байна.` };

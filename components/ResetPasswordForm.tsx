@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "./AppProvider";
 import { authErrorMessage, getBrowserClient } from "@/lib/supabase-browser";
 
@@ -16,6 +16,7 @@ export default function ResetPasswordForm() {
   const router = useRouter();
   const { openAuth } = useApp();
   const [stage, setStage] = useState<Stage>("checking");
+  const verifying = useRef(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -32,12 +33,15 @@ export default function ResetPasswordForm() {
     }
     const tokenHash = new URLSearchParams(window.location.search).get("token_hash");
     if (tokenHash) {
+      // Single-use token: verify once even if the effect runs twice (dev).
+      if (verifying.current) return;
+      verifying.current = true;
       supabase.auth
         .verifyOtp({ token_hash: tokenHash, type: "recovery" })
-        .then(({ error }) => {
-          // Single-use token: drop it from the address bar either way.
+        .then(async ({ error }) => {
           window.history.replaceState(null, "", "/reset-password");
-          setStage(error ? "invalid" : "ready");
+          const { data } = await supabase.auth.getSession();
+          setStage(!error || data.session ? "ready" : "invalid");
         });
       return;
     }
