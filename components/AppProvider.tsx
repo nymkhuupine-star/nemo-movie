@@ -8,15 +8,16 @@ import {
   useMemo,
   useState,
 } from "react";
+import { getBrowserClient } from "@/lib/supabase-browser";
 
-type User = { email: string };
+type User = { id: string; email: string };
+export type AuthTab = "login" | "register" | "forgot";
 
 type AppState = {
   user: User | null;
-  login: (email: string) => void;
-  logout: () => void;
-  authOpen: "login" | "register" | null;
-  openAuth: (tab?: "login" | "register") => void;
+  logout: () => Promise<void>;
+  authOpen: AuthTab | null;
+  openAuth: (tab?: AuthTab) => void;
   closeAuth: () => void;
   favorites: string[];
   isFavorite: (id: string) => boolean;
@@ -26,7 +27,8 @@ type AppState = {
 const AppContext = createContext<AppState | null>(null);
 
 const FAVORITES_KEY = "nemo:favorites";
-const USER_KEY = "nemo:user";
+// Left over from the old demo login; removed on load.
+const LEGACY_USER_KEY = "nemo:user";
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
@@ -55,18 +57,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Hydrate persisted state after mount so server and client markup match.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFavorites(readStorage<string[]>(FAVORITES_KEY, []));
-    setUser(readStorage<User | null>(USER_KEY, null));
+    writeStorage(LEGACY_USER_KEY, null);
+
+    // Supabase Auth session: restored from storage and kept in sync.
+    const supabase = getBrowserClient();
+    if (!supabase) return;
+    const toUser = (u: { id: string; email?: string } | null | undefined) =>
+      u ? { id: u.id, email: u.email ?? "" } : null;
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(toUser(data.session?.user));
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toUser(session?.user));
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
 
-  const login = useCallback((email: string) => {
-    const next = { email };
-    setUser(next);
-    writeStorage(USER_KEY, next);
-  }, []);
-
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await getBrowserClient()?.auth.signOut();
     setUser(null);
-    writeStorage(USER_KEY, null);
   }, []);
 
   const toggleFavorite = useCallback((id: string) => {
@@ -82,7 +91,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AppState>(
     () => ({
       user,
-      login,
       logout,
       authOpen,
       openAuth: (tab = "login") => setAuthOpen(tab),
@@ -91,7 +99,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isFavorite: (id) => favorites.includes(id),
       toggleFavorite,
     }),
-    [user, login, logout, authOpen, favorites, toggleFavorite],
+    [user, logout, authOpen, favorites, toggleFavorite],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
