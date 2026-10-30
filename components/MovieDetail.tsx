@@ -12,37 +12,36 @@ import {
   getGenreName,
   type Movie,
 } from "@/lib/movies";
+import { getPlayback } from "@/app/play-actions";
+
+type Playing = { title: string; kind: "embed" | "file"; url: string };
 
 function Player({
-  title,
-  src,
+  playing,
   onClose,
 }: {
-  title: string;
-  src?: string;
+  playing: Playing;
   onClose: () => void;
 }) {
   return (
     <div className="relative flex aspect-video w-full items-center justify-center bg-black">
-      {src ? (
+      {playing.kind === "embed" ? (
+        <iframe
+          src={playing.url}
+          title={playing.title}
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          className="h-full w-full border-0"
+        />
+      ) : (
         <video
-          src={src}
+          src={playing.url}
           controls
           autoPlay
           playsInline
-          title={title}
+          title={playing.title}
           className="h-full w-full"
         />
-      ) : (
-        <div className="text-center">
-          <div className="btn-accent mx-auto flex h-14 w-14 items-center justify-center rounded-full pl-1 text-xl">
-            ▶
-          </div>
-          <p className="mt-3 text-sm text-white/70">{title}</p>
-          <p className="mt-1 text-xs text-muted">
-            Видео холбоос нэмэгдээгүй байна
-          </p>
-        </div>
       )}
       <button
         type="button"
@@ -78,7 +77,8 @@ export default function MovieDetail({
   inModal?: boolean;
 }) {
   const { user, openAuth } = useApp();
-  const [playing, setPlaying] = useState<string | null>(null);
+  const [playing, setPlaying] = useState<Playing | null>(null);
+  const [loading, setLoading] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
   const buy = () => {
@@ -89,23 +89,35 @@ export default function MovieDetail({
     setMessage("Төлбөрийн систем удахгүй холбогдоно.");
   };
 
-  const playEpisode = (n: number) => {
+  const playEpisode = async (n: number) => {
     if (n > FREE_EPISODES) {
       setMessage(`${n}-р ангийг үзэхийн тулд худалдаж авна уу.`);
       return;
     }
     setMessage("");
-    setPlaying(`${movie.title} — ${n}-р анги`);
+    setLoading(n);
+    try {
+      const res = await getPlayback(movie.id, n);
+      if (res.ok) {
+        setPlaying({
+          title: `${movie.title} — ${n}-р анги`,
+          kind: res.kind,
+          url: res.url,
+        });
+      } else {
+        setMessage(res.error);
+      }
+    } catch {
+      setMessage("Видео ачаалахад алдаа гарлаа.");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
     <div>
       {playing ? (
-        <Player
-          title={playing}
-          src={movie.videoUrl}
-          onClose={() => setPlaying(null)}
-        />
+        <Player playing={playing} onClose={() => setPlaying(null)} />
       ) : (
         <div className="relative flex h-[230px] items-center justify-center overflow-hidden sm:h-[260px]">
           {/* Blurred backdrop */}
@@ -157,7 +169,7 @@ export default function MovieDetail({
               onClick={() => playEpisode(1)}
               className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
             >
-              ▶ 1-р анги үзэх
+              {loading === 1 ? "Ачаалж байна…" : "▶ 1-р анги үзэх"}
             </button>
           ) : null}
           <button
@@ -206,7 +218,7 @@ export default function MovieDetail({
                           : "border border-line bg-surface text-white/50 hover:text-white"
                       }`}
                     >
-                      {n}
+                      {loading === n ? "…" : n}
                       {!free && (
                         <span className="absolute top-0.5 right-1 text-[8px]">
                           🔒

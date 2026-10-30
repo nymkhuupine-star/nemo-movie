@@ -175,7 +175,7 @@ export default function MovieForm({ movie }: { movie?: Movie }) {
           />
         </Field>
 
-        <Field label="Видео URL (mp4 гэх мэт)">
+        <Field label="Гадны видео URL (Bunny видео байхгүй үед)">
           <input
             name="video_url"
             type="url"

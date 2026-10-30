@@ -3,17 +3,76 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import MovieForm from "@/components/admin/MovieForm";
+import VideoManager from "@/components/admin/VideoManager";
 import { assertAdmin } from "@/lib/admin-guard";
+import { bunnyConfigured } from "@/lib/bunny";
 import { rowToMovie, type MovieRow } from "@/lib/data";
 import { getAdminClient } from "@/lib/supabase";
+import { videoSlots } from "@/lib/videos";
 
-async function EditForm({
-  params,
-}: {
-  params: PageProps<"/admin/movies/[id]">["params"];
-}) {
+type Props = PageProps<"/admin/movies/[id]">;
+
+function Notice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-price/30 bg-price/5 p-5 text-sm leading-relaxed text-white/75">
+      {children}
+    </div>
+  );
+}
+
+async function Videos({ movie }: { movie: ReturnType<typeof rowToMovie> }) {
+  if (!bunnyConfigured()) {
+    return (
+      <Notice>
+        <p className="font-semibold text-white">Bunny Stream холбогдоогүй байна</p>
+        <p className="mt-2">
+          <code>.env.local</code> файлд дараах утгуудыг оруулаад dev server-ээ
+          дахин асаана уу (Bunny → Stream → таны library → API):
+        </p>
+        <ul className="mt-2 space-y-1 font-mono text-xs">
+          <li>BUNNY_STREAM_LIBRARY_ID</li>
+          <li>BUNNY_STREAM_API_KEY</li>
+          <li>BUNNY_STREAM_TOKEN_KEY (Security → Token authentication key)</li>
+        </ul>
+      </Notice>
+    );
+  }
+
+  const { error } = await getAdminClient()!
+    .from("videos")
+    .select("id")
+    .limit(1);
+  if (error) {
+    return (
+      <Notice>
+        <p className="font-semibold text-white">videos хүснэгт алга</p>
+        <p className="mt-2">
+          Supabase → SQL Editor дээр төслийн <code>supabase/bunny.sql</code>{" "}
+          файлыг ажиллуулна уу.
+        </p>
+      </Notice>
+    );
+  }
+
+  const isSeries = Boolean(movie.episodes);
+  const count = isSeries ? (movie.episodes ?? 0) : 1;
+  if (count === 0) {
+    return (
+      <Notice>Цувралын ангийн тоог оруулж хадгалсны дараа видео нэмнэ.</Notice>
+    );
+  }
+  return (
+    <VideoManager
+      movieId={movie.id}
+      isSeries={isSeries}
+      slots={await videoSlots(movie.id, count)}
+    />
+  );
+}
+
+async function Editor({ params, searchParams }: Props) {
   await assertAdmin();
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const client = getAdminClient();
   if (!client) notFound();
 
@@ -23,13 +82,29 @@ async function EditForm({
     .eq("id", id)
     .maybeSingle();
   if (!data) notFound();
+  const movie = rowToMovie(data as MovieRow);
 
-  return <MovieForm movie={rowToMovie(data as MovieRow)} />;
+  return (
+    <>
+      {sp.saved && (
+        <p className="mb-5 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm text-accent-light">
+          Хадгаллаа.
+        </p>
+      )}
+      <MovieForm movie={movie} />
+      <section className="mt-12">
+        <h2 className="mb-1 text-xl font-bold tracking-tight">Видео</h2>
+        <p className="mb-4 text-sm text-muted">
+          Видео шууд Bunny Stream руу upload хийгдэнэ. Encode дуусахад
+          (&quot;Бэлэн&quot;) сайт дээр тоглоно.
+        </p>
+        <Videos movie={movie} />
+      </section>
+    </>
+  );
 }
 
-export default function EditMoviePage({
-  params,
-}: PageProps<"/admin/movies/[id]">) {
+export default function EditMoviePage(props: Props) {
   return (
     <>
       <AdminHeader />
@@ -43,7 +118,7 @@ export default function EditMoviePage({
         <Suspense
           fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}
         >
-          <EditForm params={params} />
+          <Editor {...props} />
         </Suspense>
       </div>
     </>

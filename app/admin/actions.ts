@@ -13,6 +13,7 @@ import {
 import { MOVIES_TAG } from "@/lib/data";
 import { GENRES, SAMPLE_MOVIES } from "@/lib/movies";
 import { POSTER_BUCKET, getAdminClient } from "@/lib/supabase";
+import { deleteBunnyVideosForMovie } from "@/lib/videos";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -123,6 +124,7 @@ export async function saveMovie(
     hue: num(formData.get("hue")) ?? 280,
   } as Record<string, unknown>;
 
+  let savedId: string;
   try {
     const poster = formData.get("poster");
     if (poster instanceof File && poster.size > 0) {
@@ -132,22 +134,25 @@ export async function saveMovie(
     }
 
     const client = db();
-    const { error } = id
-      ? await client.from("movies").update(row).eq("id", id)
-      : await client.from("movies").insert(row);
+    const { data, error } = id
+      ? await client.from("movies").update(row).eq("id", id).select("id").single()
+      : await client.from("movies").insert(row).select("id").single();
     if (error) return { error: explain(error.message) };
+    savedId = (data as { id: string }).id;
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Алдаа гарлаа." };
   }
 
   updateTag(MOVIES_TAG);
-  redirect("/admin?saved=1");
+  // Back to the edit page so videos can be uploaded right away.
+  redirect(`/admin/movies/${savedId}?saved=1`);
 }
 
 export async function deleteMovie(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+  await deleteBunnyVideosForMovie(id);
   const { error } = await db().from("movies").delete().eq("id", id);
   if (error) throw new Error(explain(error.message));
   updateTag(MOVIES_TAG);

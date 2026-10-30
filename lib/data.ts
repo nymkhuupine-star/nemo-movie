@@ -70,7 +70,11 @@ export async function getMovies(): Promise<Movie[]> {
     return SAMPLE_MOVIES;
   }
   cacheLife("hours");
-  return (data as MovieRow[]).map(rowToMovie);
+  // Video links are handed out per play by app/play-actions.ts, not with the catalogue.
+  return (data as MovieRow[]).map((r) => ({
+    ...rowToMovie(r),
+    videoUrl: undefined,
+  }));
 }
 
 export async function getMovie(id: string): Promise<Movie | undefined> {
