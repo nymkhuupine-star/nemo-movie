@@ -9,6 +9,9 @@ export type VideoEdit = {
   logoPos?: "tl" | "tr" | "bl" | "br";
   /** Logo width as % of the player width. */
   logoSize?: number;
+  /** Free logo position (top-left, % of the player); overrides logoPos. */
+  logoX?: number;
+  logoY?: number;
   /** Rectangles (in % of the player) blurred over the video. */
   blurs?: { x: number; y: number; w: number; h: number }[];
   startSec?: number;

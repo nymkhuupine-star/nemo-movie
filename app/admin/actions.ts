@@ -110,7 +110,9 @@ function parseEdit(raw: FormDataEntryValue | null): VideoEdit {
     return {
       logoUrl: typeof e.logoUrl === "string" && e.logoUrl ? e.logoUrl : undefined,
       logoPos: ["tl", "tr", "bl", "br"].includes(e.logoPos ?? "") ? e.logoPos : "tr",
-      logoSize: Math.min(40, Math.max(4, Number(e.logoSize) || 12)),
+      logoSize: Math.min(60, Math.max(3, Number(e.logoSize) || 12)),
+      logoX: e.logoX === undefined ? undefined : pct(e.logoX),
+      logoY: e.logoY === undefined ? undefined : pct(e.logoY),
       blurs: (e.blurs ?? []).slice(0, 6).map((b) => ({
         x: pct(b.x), y: pct(b.y), w: pct(b.w), h: pct(b.h),
       })),

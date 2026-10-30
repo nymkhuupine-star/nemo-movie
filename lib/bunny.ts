@@ -119,10 +119,11 @@ export function playerUrl(
   videoId: string,
   ttlSeconds = 60 * 60 * 4,
   startSec?: number,
+  autoplay = true,
 ): string {
   const { libraryId } = requireConfig();
   const url = new URL(`https://player.mediadelivery.net/embed/${libraryId}/${videoId}`);
-  url.searchParams.set("autoplay", "true");
+  url.searchParams.set("autoplay", String(autoplay));
   url.searchParams.set("preload", "true");
   if (startSec) url.searchParams.set("t", String(Math.floor(startSec)));
   if (tokenKey) {
