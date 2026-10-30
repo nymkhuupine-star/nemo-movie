@@ -12,7 +12,7 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
       scroll={false}
       className={`group relative w-[30%] max-w-[170px] shrink-0 overflow-hidden rounded-2xl border bg-[#141414] transition-all duration-500 ${
         active
-          ? "z-10 -translate-y-3 border-white/25 shadow-[0_20px_50px_-15px_rgba(203,108,230,.4)]"
+          ? "z-10 -translate-y-3 border-white/25 shadow-[0_20px_50px_-15px_rgba(61,34,240,.5)]"
           : "border-line opacity-90"
       }`}
     >
@@ -22,7 +22,7 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
           {movie.episodes ? `${movie.episodes} анги` : "Онцлох"}
         </span>
         <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold backdrop-blur">
-          <span className="text-accent">★</span>
+          <span className="text-accent-light">★</span>
           {movie.rating.toFixed(1)}
         </span>
         <span className="btn-accent absolute right-2 -bottom-4 flex h-9 w-9 items-center justify-center rounded-full pl-0.5 text-sm transition-transform group-hover:scale-110">
@@ -31,7 +31,7 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
       </div>
       <div className="px-3 pt-4 pb-3">
         <p className="truncate text-sm font-bold">{movie.title}</p>
-        <p className="mt-1 text-[11px] font-medium text-accent">
+        <p className="mt-1 text-[11px] font-medium text-accent-light">
           {getGenreName(movie.genre)} · {movie.year}
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function Hero({ movies }: { movies: Movie[] }) {
   const visible = [0, 1, 2].map((o) => movies[(index + o) % count]);
 
   return (
-    <section className="relative mt-4 overflow-hidden rounded-3xl border border-line bg-[radial-gradient(120%_120%_at_0%_0%,rgba(203,108,230,.18),transparent_55%),linear-gradient(180deg,#130e16,#070707)] px-6 py-10 sm:px-10 sm:py-14">
+    <section className="relative mt-4 overflow-hidden rounded-3xl border border-line bg-[radial-gradient(120%_120%_at_0%_0%,rgba(61,34,240,.28),transparent_55%),linear-gradient(180deg,#0d0b1c,#070707)] px-6 py-10 sm:px-10 sm:py-14">
       <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
       <div className="relative grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div>

@@ -145,7 +145,7 @@ export default function AuthModal() {
               onClick={() =>
                 setNotice("Нууц үг сэргээх холбоосыг имэйлээр илгээх болно.")
               }
-              className="text-sm font-medium text-accent hover:underline"
+              className="text-sm font-medium text-accent-light hover:underline"
             >
               Нууц үг мартсан уу?
             </button>

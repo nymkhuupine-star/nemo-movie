@@ -25,7 +25,7 @@ export default function FavoriteButton({
       aria-pressed={active}
       aria-label={active ? "Жагсаалтаас хасах" : "Миний жагсаалтад нэмэх"}
       className={`transition-colors ${
-        active ? "text-accent" : "text-white/60 hover:text-white"
+        active ? "text-accent-light" : "text-white/60 hover:text-white"
       } ${className}`}
     >
       {active ? "♥" : "♡"}

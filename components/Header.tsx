@@ -111,7 +111,7 @@ export default function Header() {
                     onClick={closeMenus}
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/5 hover:text-white ${
                       pathname === `/browse/${g.slug}`
-                        ? "text-accent"
+                        ? "text-accent-light"
                         : "text-white/70"
                     }`}
                   >

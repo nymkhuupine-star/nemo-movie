@@ -109,7 +109,7 @@ export default function MovieDetail({
         </h1>
 
         <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/60">
-          <span className="font-semibold text-accent">
+          <span className="font-semibold text-accent-light">
             ★ {movie.rating.toFixed(1)}
           </span>
           <span>{movie.year}</span>
@@ -179,7 +179,7 @@ export default function MovieDetail({
                       onClick={() => playEpisode(n)}
                       className={`relative h-10 rounded-lg text-sm font-medium transition-colors ${
                         free
-                          ? "border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+                          ? "border border-accent/40 bg-accent/10 text-accent-light hover:bg-accent/20"
                           : "border border-line bg-surface text-white/50 hover:text-white"
                       }`}
                     >
@@ -204,7 +204,7 @@ export default function MovieDetail({
           <span className="text-white/60">
             <b className="text-white">Гишүүнчлэл</b> — бүх кино, цуврал нэг дор
           </span>
-          <span className="font-semibold text-accent">Үзэх →</span>
+          <span className="font-semibold text-accent-light">Үзэх →</span>
         </Link>
       </div>
     </div>

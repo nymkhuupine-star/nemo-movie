@@ -36,7 +36,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
           </div>
 
           <span className="absolute bottom-2 left-2 flex items-center gap-1 text-[11px] font-semibold text-white [text-shadow:0_1px_4px_rgba(0,0,0,.9)]">
-            <span className="text-accent">★</span>
+            <span className="text-accent-light">★</span>
             {movie.rating.toFixed(1)}
           </span>
 
