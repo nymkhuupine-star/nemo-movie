@@ -8,11 +8,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Brand blue from the Nemo logo (#1800ad). Buttons fade from a brighter
-     blue into it; small text uses the light tint so it stays readable on black. */
-  --color-accent: #3d22f0;
-  --color-accent-2: #1800ad;
-  --color-accent-light: #9a8cff;
+  /* Brand pink (the logo's REC light). Buttons fade into a deeper pink;
+     small text uses the light tint. */
+  --color-accent: oklch(65.6% 0.241 354.308);
+  --color-accent-2: oklch(59.2% 0.249 0.584);
+  --color-accent-light: oklch(71.8% 0.202 349.761);
   --color-surface: #111111;
   --color-surface-2: #1a1a1a;
   --color-line: rgba(255, 255, 255, 0.08);
@@ -51,6 +51,26 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+.rec-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  box-shadow:
+    0 0 6px 1px var(--color-accent),
+    0 0 16px 4px color-mix(in oklch, var(--color-accent) 55%, transparent);
+  animation: rec-blink 1.6s ease-in-out infinite;
+}
+@keyframes rec-blink {
+  0%, 55% { opacity: 1; }
+  75% { opacity: 0.25; box-shadow: 0 0 2px 0 var(--color-accent); }
+  100% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot { animation: none; }
 }
 
 @keyframes fade-in {
