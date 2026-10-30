@@ -1,30 +1,20 @@
-import Link from "next/link";
 import { Suspense } from "react";
-import MovieForm from "@/components/admin/MovieForm";
+import NewMovieButton from "@/components/admin/NewMovieButton";
 import { assertAdmin } from "@/lib/admin-guard";
 import { getGenres } from "@/lib/data";
 
-async function GuardedForm() {
+async function Flow() {
   await assertAdmin();
-  return <MovieForm genres={await getGenres()} />;
+  return <NewMovieButton genres={await getGenres()} autoOpen />;
 }
 
 export default function NewMoviePage() {
   return (
-    <>
-      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
-        <Link href="/admin/movies" className="text-sm text-white/60 hover:text-white">
-          ← Кинонууд
-        </Link>
-        <h1 className="mt-3 mb-6 text-[28px] font-bold tracking-tight">
-          Шинэ кино нэмэх
-        </h1>
-        <Suspense
-          fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}
-        >
-          <GuardedForm />
-        </Suspense>
-      </div>
-    </>
+    <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
+      <h1 className="mb-6 text-[28px] font-bold tracking-tight">Кино нэмэх</h1>
+      <Suspense fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}>
+        <Flow />
+      </Suspense>
+    </div>
   );
 }

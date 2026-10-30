@@ -3,6 +3,18 @@ export type Genre = {
   name: string;
 };
 
+/** Overlays and trim applied by the site's player (the video file is untouched). */
+export type VideoEdit = {
+  logoUrl?: string;
+  logoPos?: "tl" | "tr" | "bl" | "br";
+  /** Logo width as % of the player width. */
+  logoSize?: number;
+  /** Rectangles (in % of the player) blurred over the video. */
+  blurs?: { x: number; y: number; w: number; h: number }[];
+  startSec?: number;
+  endSec?: number;
+};
+
 export type Movie = {
   id: string;
   title: string;
@@ -32,6 +44,10 @@ export type Movie = {
   trendOrder?: number;
   /** Hidden from the site (admin only). */
   hidden?: boolean;
+  /** Wide background image (optional). */
+  backdrop?: string;
+  /** Player overlays/trim. */
+  edit?: VideoEdit;
 };
 
 export type Plan = {

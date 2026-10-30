@@ -10,6 +10,7 @@ import {
   type Genre,
   type Movie,
   type Plan,
+  type VideoEdit,
 } from "./movies";
 
 export const MOVIES_TAG = "movies";
@@ -35,6 +36,8 @@ export type MovieRow = {
   hero_order?: number | null;
   trend_order?: number | null;
   is_hidden?: boolean;
+  backdrop_url?: string | null;
+  edit?: VideoEdit | null;
   created_at: string;
 };
 
@@ -58,6 +61,8 @@ export function rowToMovie(r: MovieRow): Movie {
     heroOrder: r.hero_order ?? undefined,
     trendOrder: r.trend_order ?? undefined,
     hidden: r.is_hidden ?? false,
+    backdrop: r.backdrop_url ?? undefined,
+    edit: r.edit ?? undefined,
   };
 }
 
@@ -143,6 +148,8 @@ export async function getMovies(): Promise<Movie[]> {
     ...rowToMovie(r),
     genreName: names.get(r.genre),
     videoUrl: undefined,
+    // Sent with each playback instead (see app/play-actions.ts).
+    edit: undefined,
   }));
 }
 
