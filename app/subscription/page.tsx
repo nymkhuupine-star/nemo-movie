@@ -23,7 +23,7 @@ export default function SubscriptionPage() {
               key={plan.id}
               className={`flex flex-col gap-5 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7 ${
                 highlight
-                  ? "border-accent/40 bg-[linear-gradient(135deg,rgba(237,106,255,.16),rgba(0,0,0,0)_60%)]"
+                  ? "border-accent/40 bg-[linear-gradient(135deg,rgba(194,122,255,.16),rgba(0,0,0,0)_60%)]"
                   : "border-line bg-surface"
               }`}
             >

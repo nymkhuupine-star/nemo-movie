@@ -8,11 +8,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Brand fuchsia (the logo's REC light). Buttons fade into a deeper shade;
+  /* Brand purple (the logo's REC light). Buttons fade into a deeper shade;
      small text uses the light tint. */
-  --color-accent: oklch(74% 0.238 322.16);
-  --color-accent-2: oklch(66.7% 0.295 322.15);
-  --color-accent-light: oklch(83.3% 0.145 321.434);
+  --color-accent: oklch(71.4% 0.203 305.504);
+  --color-accent-2: oklch(62.7% 0.265 303.9);
+  --color-accent-light: oklch(82.7% 0.119 306.383);
   --color-surface: #111111;
   --color-surface-2: #1a1a1a;
   --color-line: rgba(255, 255, 255, 0.08);
