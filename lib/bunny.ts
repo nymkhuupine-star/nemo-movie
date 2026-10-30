@@ -98,7 +98,7 @@ export async function getCaptions(videoId: string): Promise<{ srclang: string; l
 }
 
 /** Signature for a direct browser → Bunny TUS upload of one video. */
-export function signUpload(videoId: string, ttlSeconds = 60 * 60 * 6) {
+export function signUpload(videoId: string, ttlSeconds = 60 * 60 * 48) {
   const { libraryId, apiKey } = requireConfig();
   const expire = Math.floor(Date.now() / 1000) + ttlSeconds;
   return {
