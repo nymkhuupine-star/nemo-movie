@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import MovieForm from "@/components/admin/MovieForm";
+import EditMovieClient from "@/components/admin/EditMovieClient";
 import VideoManager from "@/components/admin/VideoManager";
 import { assertAdmin } from "@/lib/admin-guard";
 import { bunnyConfigured } from "@/lib/bunny";
@@ -65,6 +65,7 @@ async function Videos({ movie }: { movie: ReturnType<typeof rowToMovie> }) {
       movieId={movie.id}
       isSeries={isSeries}
       slots={await videoSlots(movie.id, count)}
+      bare
     />
   );
 }
@@ -90,15 +91,11 @@ async function Editor({ params, searchParams }: Props) {
           Хадгаллаа.
         </p>
       )}
-      <MovieForm movie={movie} genres={await getGenres()} />
-      <section id="videos" className="mt-12 scroll-mt-8">
-        <h2 className="mb-1 text-xl font-bold tracking-tight">Видео</h2>
-        <p className="mb-4 text-sm text-muted">
-          Видео шууд Bunny Stream руу upload хийгдэнэ. Encode дуусахад
-          (&quot;Бэлэн&quot;) сайт дээр тоглоно.
-        </p>
-        <Videos movie={movie} />
-      </section>
+      <EditMovieClient
+        movie={movie}
+        genres={await getGenres()}
+        videoSlot={<Videos movie={movie} />}
+      />
     </>
   );
 }
@@ -108,7 +105,7 @@ export default function EditMoviePage(props: Props) {
     <>
       <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
         <Link href="/admin/movies" className="text-sm text-white/60 hover:text-white">
-          ← Кинонууд
+          ← Кино
         </Link>
         <h1 className="mt-3 mb-6 text-[28px] font-bold tracking-tight">
           Кино засах

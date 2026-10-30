@@ -1,7 +1,9 @@
 import Link from "next/link";
 import AdminShell, { MissingTable } from "@/components/admin/AdminShell";
 import MoviesTable, { type MovieTableRow } from "@/components/admin/MoviesTable";
-import { IconPlus, IconSparkle, IconTrend } from "@/components/admin/icons";
+import { Suspense } from "react";
+import NewMovieButton from "@/components/admin/NewMovieButton";
+import { IconSparkle, IconTrend } from "@/components/admin/icons";
 import { assertAdmin } from "@/lib/admin-guard";
 import { getGenres, rowToMovie, type MovieRow } from "@/lib/data";
 import { getAdminClient, supabaseStatus } from "@/lib/supabase";
@@ -96,6 +98,10 @@ async function Movies({
   );
 }
 
+async function NewMovie() {
+  return <NewMovieButton genres={await getGenres()} />;
+}
+
 const BUTTON =
   "inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-surface px-4 text-[15px] font-medium text-white/90 hover:bg-white/5";
 
@@ -112,12 +118,9 @@ export default function AdminMoviesPage({ searchParams }: PageProps<"/admin/movi
           <Link href="/admin/order/trending" className={BUTTON}>
             <IconTrend className="h-5 w-5" /> Тренд дараалал
           </Link>
-          <Link
-            href="/admin/movies/new"
-            className="btn-accent inline-flex h-11 items-center gap-2 rounded-xl px-5 text-[15px] font-semibold"
-          >
-            <IconPlus className="h-5 w-5" /> Кино нэмэх
-          </Link>
+          <Suspense fallback={null}>
+            <NewMovie />
+          </Suspense>
         </>
       }
     >

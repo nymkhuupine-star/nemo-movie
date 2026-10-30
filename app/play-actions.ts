@@ -3,12 +3,12 @@
 import { accessFor, canWatch, logPlay, userIdFromToken, type Access } from "@/lib/access";
 import { bunnyConfigured, playerUrl } from "@/lib/bunny";
 import { getMovie } from "@/lib/data";
-import { FREE_EPISODES } from "@/lib/movies";
+import { FREE_EPISODES, type VideoEdit } from "@/lib/movies";
 import { getAdminClient } from "@/lib/supabase";
 import { findVideoId } from "@/lib/videos";
 
 export type PlayResult =
-  | { ok: true; kind: "embed" | "file"; url: string }
+  | { ok: true; kind: "embed" | "file"; url: string; edit: VideoEdit }
   | { ok: false; error: string; locked?: boolean };
 
 /** What the signed-in user may watch for one movie (drives the lock icons). */
@@ -54,20 +54,25 @@ export async function getPlayback(
     }
   }
 
+  // Overlays/trim set in the admin editor ("Видео засвар").
+  const { data } = (await getAdminClient()
+    ?.from("movies")
+    .select("*")
+    .eq("id", movieId)
+    .maybeSingle()) ?? { data: null };
+  const row = data as { video_url?: string | null; edit?: VideoEdit | null } | null;
+  const edit = row?.edit ?? {};
+
   let result: PlayResult | null = null;
   if (bunnyConfigured()) {
     const videoId = await findVideoId(movieId, episode);
-    if (videoId) result = { ok: true, kind: "embed", url: playerUrl(videoId) };
+    if (videoId) {
+      result = { ok: true, kind: "embed", url: playerUrl(videoId, undefined, edit.startSec), edit };
+    }
   }
-  if (!result) {
-    // Fallback: a plain video URL set in the admin form.
-    const { data } = (await getAdminClient()
-      ?.from("movies")
-      .select("video_url")
-      .eq("id", movieId)
-      .maybeSingle()) ?? { data: null };
-    const fileUrl = (data as { video_url: string | null } | null)?.video_url;
-    if (fileUrl) result = { ok: true, kind: "file", url: fileUrl };
+  if (!result && row?.video_url) {
+    // Fallback: a plain video URL.
+    result = { ok: true, kind: "file", url: row.video_url, edit };
   }
   if (!result) {
     return { ok: false, error: "Энэ ангийн видео хараахан нэмэгдээгүй байна." };

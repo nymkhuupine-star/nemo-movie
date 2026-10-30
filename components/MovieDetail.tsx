@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import VideoOverlays from "./VideoOverlays";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
 import { useApp } from "./AppProvider";
@@ -11,6 +12,7 @@ import {
   formatPrice,
   genreLabel,
   type Movie,
+  type VideoEdit,
 } from "@/lib/movies";
 import { getMyAccess, getPlayback } from "@/app/play-actions";
 import { getBrowserClient } from "@/lib/supabase-browser";
@@ -21,7 +23,40 @@ async function accessToken(): Promise<string | undefined> {
   return data?.session?.access_token;
 }
 
-type Playing = { title: string; kind: "embed" | "file"; url: string };
+type Playing = {
+  title: string;
+  kind: "embed" | "file";
+  url: string;
+  edit: VideoEdit;
+};
+
+type PlayerJs = {
+  on: (e: string, cb: (d?: { seconds: number }) => void) => void;
+  off: (e: string) => void;
+  pause: () => void;
+};
+declare global {
+  interface Window {
+    playerjs?: { Player: new (el: HTMLIFrameElement) => PlayerJs };
+  }
+}
+
+const PLAYERJS_SRC = "https://assets.mediadelivery.net/playerjs/playerjs-latest.min.js";
+
+/** Loads Bunny's player.js once; resolves with the global. */
+function loadPlayerJs(): Promise<NonNullable<Window["playerjs"]>> {
+  if (window.playerjs) return Promise.resolve(window.playerjs);
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${PLAYERJS_SRC}"]`);
+    const script = existing ?? document.createElement("script");
+    script.addEventListener("load", () => window.playerjs && resolve(window.playerjs));
+    script.addEventListener("error", reject);
+    if (!existing) {
+      script.src = PLAYERJS_SRC;
+      document.head.appendChild(script);
+    }
+  });
+}
 
 function Player({
   playing,
@@ -30,16 +65,54 @@ function Player({
   playing: Playing;
   onClose: () => void;
 }) {
+  const { edit } = playing;
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [ended, setEnded] = useState(false);
+  // The iframe is only mounted once player.js is ready, so "ready" isn't missed.
+  const [pjsReady, setPjsReady] = useState(playing.kind !== "embed" || !edit.endSec);
+
+  useEffect(() => {
+    if (playing.kind !== "embed" || !edit.endSec) return;
+    let cancelled = false;
+    loadPlayerJs()
+      .then(() => !cancelled && setPjsReady(true))
+      .catch(() => !cancelled && setPjsReady(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [playing.kind, edit.endSec]);
+
+  // Stop at the end point set in the admin ("Хугацаа").
+  useEffect(() => {
+    if (playing.kind !== "embed" || !edit.endSec || !pjsReady || !window.playerjs) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const player = new window.playerjs.Player(iframe);
+    const end = edit.endSec;
+    player.on("ready", () => {
+      player.on("timeupdate", (d) => {
+        if (d && d.seconds >= end) {
+          player.pause();
+          setEnded(true);
+        }
+      });
+    });
+    return () => player.off("timeupdate");
+  }, [playing.kind, edit.endSec, pjsReady]);
+
   return (
-    <div className="relative flex aspect-video w-full items-center justify-center bg-black">
+    <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-black">
       {playing.kind === "embed" ? (
-        <iframe
-          src={playing.url}
-          title={playing.title}
-          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-          className="h-full w-full border-0"
-        />
+        pjsReady && (
+          <iframe
+            ref={iframeRef}
+            src={playing.url}
+            title={playing.title}
+            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            className="h-full w-full border-0"
+          />
+        )
       ) : (
         <video
           src={playing.url}
@@ -48,12 +121,27 @@ function Player({
           playsInline
           title={playing.title}
           className="h-full w-full"
+          onLoadedMetadata={(e) => {
+            if (edit.startSec) e.currentTarget.currentTime = edit.startSec;
+          }}
+          onTimeUpdate={(e) => {
+            if (edit.endSec && e.currentTarget.currentTime >= edit.endSec) {
+              e.currentTarget.pause();
+              setEnded(true);
+            }
+          }}
         />
+      )}
+      <VideoOverlays edit={edit} />
+      {ended && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-sm text-white/80">
+          Дууслаа
+        </div>
       )}
       <button
         type="button"
         onClick={onClose}
-        className="absolute top-3 left-3 rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+        className="absolute top-3 left-3 z-10 rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
       >
         ← Буцах
       </button>
@@ -127,6 +215,7 @@ export default function MovieDetail({
           title: movie.episodes ? `${movie.title} — ${n}-р анги` : movie.title,
           kind: res.kind,
           url: res.url,
+          edit: res.edit,
         });
       } else {
         setMessage(res.error);

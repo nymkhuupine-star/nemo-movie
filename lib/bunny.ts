@@ -75,6 +75,28 @@ export async function getVideo(videoId: string): Promise<VideoInfo> {
   return api<VideoInfo>(`/videos/${videoId}`);
 }
 
+/** Adds (or replaces) a subtitle track; Bunny's player shows it as a CC option. */
+export async function addCaption(
+  videoId: string,
+  srclang: string,
+  label: string,
+  fileText: string,
+): Promise<void> {
+  await api(`/videos/${videoId}/captions/${srclang}`, {
+    method: "POST",
+    body: JSON.stringify({
+      srclang,
+      label,
+      captionsFile: Buffer.from(fileText, "utf8").toString("base64"),
+    }),
+  });
+}
+
+export async function getCaptions(videoId: string): Promise<{ srclang: string; label: string }[]> {
+  const v = await api<{ captions?: { srclang: string; label: string }[] }>(`/videos/${videoId}`);
+  return v.captions ?? [];
+}
+
 /** Signature for a direct browser → Bunny TUS upload of one video. */
 export function signUpload(videoId: string, ttlSeconds = 60 * 60 * 6) {
   const { libraryId, apiKey } = requireConfig();
@@ -93,11 +115,16 @@ export function signUpload(videoId: string, ttlSeconds = 60 * 60 * 6) {
  * view token authentication" in the library's Security tab) the link is
  * signed and stops working after `ttlSeconds`.
  */
-export function playerUrl(videoId: string, ttlSeconds = 60 * 60 * 4): string {
+export function playerUrl(
+  videoId: string,
+  ttlSeconds = 60 * 60 * 4,
+  startSec?: number,
+): string {
   const { libraryId } = requireConfig();
   const url = new URL(`https://player.mediadelivery.net/embed/${libraryId}/${videoId}`);
   url.searchParams.set("autoplay", "true");
   url.searchParams.set("preload", "true");
+  if (startSec) url.searchParams.set("t", String(Math.floor(startSec)));
   if (tokenKey) {
     const expires = Math.floor(Date.now() / 1000) + ttlSeconds;
     url.searchParams.set("token", sha256(tokenKey + videoId + expires));

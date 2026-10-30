@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/admin-session";
-import { createVideo, deleteVideo, signUpload } from "@/lib/bunny";
+import { addCaption, createVideo, deleteVideo, signUpload } from "@/lib/bunny";
 import { getAdminClient } from "@/lib/supabase";
 import { findVideoId } from "@/lib/videos";
 
@@ -82,4 +82,24 @@ export async function removeVideo(movieId: string, episode: number) {
     .eq("movie_id", movieId)
     .eq("episode", episode);
   if (error) throw new Error(error.message);
+}
+
+/** Uploads a .srt/.vtt file as the Mongolian subtitle track of one episode. */
+export async function uploadCaption(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  const movieId = String(formData.get("movieId") ?? "");
+  const episode = Number(formData.get("episode") || 1);
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Файл сонгоно уу." };
+  if (!/\.(srt|vtt)$/i.test(file.name)) return { ok: false, error: ".srt эсвэл .vtt файл байх ёстой." };
+  if (file.size > 2 * 1024 * 1024) return { ok: false, error: "Хадмалын файл хэт том байна." };
+
+  const videoId = await findVideoId(movieId, episode);
+  if (!videoId) return { ok: false, error: "Эхлээд бичлэгээ оруулна уу." };
+  try {
+    await addCaption(videoId, "mn", "Монгол", await file.text());
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Алдаа гарлаа." };
+  }
 }
