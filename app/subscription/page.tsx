@@ -23,7 +23,7 @@ export default function SubscriptionPage() {
               key={plan.id}
               className={`flex flex-col gap-5 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7 ${
                 highlight
-                  ? "border-accent/40 bg-[linear-gradient(135deg,rgba(131,208,102,.12),rgba(0,0,0,0)_60%)]"
+                  ? "border-accent/40 bg-[linear-gradient(135deg,rgba(203,108,230,.14),rgba(0,0,0,0)_60%)]"
                   : "border-line bg-surface"
               }`}
             >
@@ -31,7 +31,7 @@ export default function SubscriptionPage() {
                 <h2 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight">
                   {plan.name}
                   {plan.badge && (
-                    <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-bold text-black">
+                    <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-bold text-white">
                       {plan.badge}
                     </span>
                   )}
