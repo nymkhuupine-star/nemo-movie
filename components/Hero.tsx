@@ -12,7 +12,7 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
       scroll={false}
       className={`group relative w-[30%] max-w-[170px] shrink-0 overflow-hidden rounded-2xl border bg-[#141414] transition-all duration-500 ${
         active
-          ? "z-10 -translate-y-3 border-white/25 shadow-[0_20px_50px_-15px_rgba(194,122,255,.45)]"
+          ? "z-10 -translate-y-3 border-white/25 shadow-[0_20px_50px_-15px_rgba(218,178,255,.45)]"
           : "border-line opacity-90"
       }`}
     >
@@ -53,7 +53,7 @@ export default function Hero({ movies }: { movies: Movie[] }) {
   const visible = [0, 1, 2].map((o) => movies[(index + o) % count]);
 
   return (
-    <section className="relative mt-4 overflow-hidden rounded-3xl border border-line bg-[radial-gradient(120%_120%_at_0%_0%,rgba(194,122,255,.2),transparent_55%),linear-gradient(180deg,#110a18,#070707)] px-6 py-10 sm:px-10 sm:py-14">
+    <section className="relative mt-4 overflow-hidden rounded-3xl border border-line bg-[radial-gradient(120%_120%_at_0%_0%,rgba(218,178,255,.2),transparent_55%),linear-gradient(180deg,#110a18,#070707)] px-6 py-10 sm:px-10 sm:py-14">
       <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
       <div className="relative grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div>
