@@ -45,7 +45,7 @@ export default async function SubscriptionPage() {
                 <p className="text-3xl font-black tracking-tight">
                   {plan.price.toLocaleString("en-US")}₮
                 </p>
-                <PlanButton planName={plan.name} highlight={highlight} />
+                <PlanButton planId={plan.id} highlight={highlight} />
               </div>
             </div>
           );

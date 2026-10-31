@@ -3,6 +3,7 @@
 import { accessFor, canWatch, logPlay, userIdFromToken, type Access } from "@/lib/access";
 import { bunnyConfigured, playerUrl } from "@/lib/bunny";
 import { getMovie } from "@/lib/data";
+import { settleUserPayments } from "@/lib/payments";
 import { FREE_EPISODES, type VideoEdit } from "@/lib/movies";
 import { getAdminClient } from "@/lib/supabase";
 import { findVideoId } from "@/lib/videos";
@@ -17,7 +18,12 @@ export async function getMyAccess(
   accessToken: string,
 ): Promise<Access | null> {
   const userId = await userIdFromToken(accessToken);
-  return userId ? accessFor(userId, movieId) : null;
+  if (!userId) return null;
+  const access = await accessFor(userId, movieId);
+  if (canWatch(access)) return access;
+  // A payment may have landed after they closed the checkout dialog.
+  await settleUserPayments(userId);
+  return accessFor(userId, movieId);
 }
 
 /**
@@ -42,7 +48,11 @@ export async function getPlayback(
   const userId = await userIdFromToken(accessToken);
   const free = isSeries && episode <= FREE_EPISODES;
   if (!free) {
-    const allowed = userId ? canWatch(await accessFor(userId, movieId)) : false;
+    let allowed = userId ? canWatch(await accessFor(userId, movieId)) : false;
+    if (!allowed && userId) {
+      await settleUserPayments(userId);
+      allowed = canWatch(await accessFor(userId, movieId));
+    }
     if (!allowed) {
       return {
         ok: false,

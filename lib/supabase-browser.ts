@@ -28,6 +28,12 @@ export function getBrowserClient(): SupabaseClient | null {
   return client;
 }
 
+/** The signed-in user's token, which server actions verify. */
+export async function getAccessToken(): Promise<string | undefined> {
+  const { data } = (await getBrowserClient()?.auth.getSession()) ?? { data: null };
+  return data?.session?.access_token;
+}
+
 /** Supabase auth errors → Mongolian messages. */
 export function authErrorMessage(message: string): string {
   const m = message.toLowerCase();

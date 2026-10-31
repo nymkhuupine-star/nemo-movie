@@ -14,6 +14,24 @@ const TABS = [
   ["expired", "Дууссан"],
 ] as const;
 
+/** Calendar day in Mongolia as YYYY-MM-DD, whatever timezone the server runs in. */
+function mongoliaDay(date: Date): string {
+  return date.toLocaleDateString("en-CA", { timeZone: "Asia/Ulaanbaatar" });
+}
+
+/** Money actually received through QPay; manually granted access doesn't count. */
+function revenueCards(paid: { amount: number; paid_at: string }[]) {
+  const today = mongoliaDay(new Date());
+  const sum = (match: (day: string) => boolean) =>
+    paid.reduce((total, p) => (match(mongoliaDay(new Date(p.paid_at))) ? total + p.amount : total), 0);
+  return [
+    ["Өнөөдрийн орлого", sum((day) => day === today)],
+    ["Энэ сарын орлого", sum((day) => day.slice(0, 7) === today.slice(0, 7))],
+    ["Нийт орлого", sum(() => true)],
+    ["Төлбөрийн тоо", paid.length],
+  ] as const;
+}
+
 async function Purchases({
   searchParams,
 }: {
@@ -24,8 +42,9 @@ async function Purchases({
   const status = TABS.some(([k]) => k === sp.status) ? String(sp.status) : "all";
 
   const admin = getAdminClient()!;
-  const [{ data, error }, users, movies, { plans }] = await Promise.all([
+  const [{ data, error }, { data: paid }, users, movies, { plans }] = await Promise.all([
     admin.from("entitlements").select("*").order("created_at", { ascending: false }),
+    admin.from("payments").select("amount, paid_at").eq("status", "paid"),
     listAllUsers(),
     adminMovieOptions(),
     adminPlans(),
@@ -47,6 +66,18 @@ async function Purchases({
 
   return (
     <>
+      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+        {revenueCards(paid ?? []).map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-line bg-surface p-4">
+            <p className="text-sm text-muted">{label}</p>
+            <p className="mt-1 text-2xl font-bold">
+              {value.toLocaleString("en-US")}
+              {label !== "Төлбөрийн тоо" && "₮"}
+            </p>
+          </div>
+        ))}
+      </div>
+
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           ["Идэвхтэй гишүүнчлэл", all.filter((e) => e.kind === "subscription" && isActive(e)).length],

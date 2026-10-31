@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import VideoOverlays from "./VideoOverlays";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
+import CheckoutModal from "./CheckoutModal";
 import { useApp } from "./AppProvider";
 import {
   FREE_EPISODES,
@@ -15,13 +16,8 @@ import {
   type VideoEdit,
 } from "@/lib/movies";
 import { getMyAccess, getPlayback } from "@/app/play-actions";
-import { getBrowserClient } from "@/lib/supabase-browser";
+import { getAccessToken as accessToken } from "@/lib/supabase-browser";
 import type { Access } from "@/lib/access";
-
-async function accessToken(): Promise<string | undefined> {
-  const { data } = (await getBrowserClient()?.auth.getSession()) ?? { data: null };
-  return data?.session?.access_token;
-}
 
 type Playing = {
   title: string;
@@ -179,6 +175,8 @@ export default function MovieDetail({
   const [loading, setLoading] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [access, setAccess] = useState<Access | null>(null);
+  const [buying, setBuying] = useState(false);
+  const [paidCount, setPaidCount] = useState(0);
   const unlocked = Boolean(access?.subscriptionUntil || access?.ownsMovie);
 
   // Ask the server what this user may watch, to drop the lock icons.
@@ -192,14 +190,15 @@ export default function MovieDetail({
     return () => {
       cancelled = true;
     };
-  }, [user, movie.id]);
+  }, [user, movie.id, paidCount]);
 
   const buy = () => {
     if (!user) {
       openAuth("login");
       return;
     }
-    setMessage("Төлбөрийн систем удахгүй холбогдоно.");
+    setMessage("");
+    setBuying(true);
   };
 
   const playEpisode = async (n: number) => {
@@ -232,6 +231,13 @@ export default function MovieDetail({
 
   return (
     <div>
+      {buying && (
+        <CheckoutModal
+          item={{ kind: "movie", movieId: movie.id }}
+          onClose={() => setBuying(false)}
+          onPaid={() => setPaidCount((n) => n + 1)}
+        />
+      )}
       {playing ? (
         <Player playing={playing} onClose={() => setPlaying(null)} />
       ) : (
