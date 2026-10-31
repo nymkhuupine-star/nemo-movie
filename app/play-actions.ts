@@ -1,7 +1,7 @@
 "use server";
 
 import { accessFor, canWatch, logPlay, userIdFromToken, type Access } from "@/lib/access";
-import { bunnyConfigured, playerUrl } from "@/lib/bunny";
+import { bunnyConfigured, playerUrl, videoAspect } from "@/lib/bunny";
 import { getMovie } from "@/lib/data";
 import { settleUserPayments } from "@/lib/payments";
 import { FREE_EPISODES, type VideoEdit } from "@/lib/movies";
@@ -9,7 +9,7 @@ import { getAdminClient } from "@/lib/supabase";
 import { findVideoId } from "@/lib/videos";
 
 export type PlayResult =
-  | { ok: true; kind: "embed" | "file"; url: string; edit: VideoEdit }
+  | { ok: true; kind: "embed" | "file"; url: string; edit: VideoEdit; aspect?: number }
   | { ok: false; error: string; locked?: boolean };
 
 /** What the signed-in user may watch for one movie (drives the lock icons). */
@@ -77,7 +77,13 @@ export async function getPlayback(
   if (bunnyConfigured()) {
     const videoId = await findVideoId(movieId, episode);
     if (videoId) {
-      result = { ok: true, kind: "embed", url: playerUrl(videoId, undefined, edit.startSec), edit };
+      result = {
+        ok: true,
+        kind: "embed",
+        url: playerUrl(videoId, undefined, edit.startSec),
+        edit,
+        aspect: await videoAspect(videoId),
+      };
     }
   }
   if (!result && row?.video_url) {

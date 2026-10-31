@@ -8,6 +8,7 @@ import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
 import { useApp } from "./AppProvider";
 import {
+  embedFit,
   formatDuration,
   formatPrice,
   genreLabel,
@@ -23,6 +24,7 @@ export type Playing = {
   kind: "embed" | "file";
   url: string;
   edit: VideoEdit;
+  aspect?: number;
 };
 
 type PlayerJs = {
@@ -102,7 +104,9 @@ export function Player({
       {/* Overlay positions are % of this box, so it must match the admin preview. */}
       <div
         data-overlay-box
-        className={`relative overflow-hidden ${edit.vertical ? "aspect-[9/16] h-full" : "h-full w-full"}`}
+        className={`relative flex items-center justify-center overflow-hidden ${
+          edit.vertical ? "aspect-[9/16] h-full" : "h-full w-full"
+        }`}
       >
         {playing.kind === "embed" ? (
           pjsReady && (
@@ -112,7 +116,8 @@ export function Player({
               title={playing.title}
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
               allowFullScreen
-              className="h-full w-full border-0"
+              className="border-0"
+              style={embedFit(playing.aspect, edit.vertical)}
             />
           )
         ) : (
@@ -228,6 +233,7 @@ export default function MovieDetail({
           kind: res.kind,
           url: res.url,
           edit: res.edit,
+          aspect: res.aspect,
         });
       } else {
         setMessage(res.error);

@@ -69,10 +69,22 @@ export type VideoInfo = {
   status: number;
   encodeProgress: number;
   length: number;
+  width: number;
+  height: number;
 };
 
 export async function getVideo(videoId: string): Promise<VideoInfo> {
   return api<VideoInfo>(`/videos/${videoId}`);
+}
+
+/** Width ÷ height of a video; undefined until Bunny has measured it or if it can't be asked. */
+export async function videoAspect(videoId: string): Promise<number | undefined> {
+  try {
+    const { width, height } = await getVideo(videoId);
+    return width && height ? width / height : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Adds (or replaces) a subtitle track; Bunny's player shows it as a CC option. */
