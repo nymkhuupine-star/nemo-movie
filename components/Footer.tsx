@@ -4,7 +4,7 @@ import Logo from "./Logo";
 const SOCIALS = [
   {
     label: "Facebook",
-    href: "https://www.facebook.com/",
+    href: "https://www.facebook.com/profile.php?id=61595880757706",
     icon: (
       <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
         <path d="M14 8h3V4h-3c-2.8 0-4.5 1.8-4.5 4.6V11H7v4h2.5v9h4v-9h3l.5-4h-3.5V8.8c0-.5.3-.8.5-.8Z" />
@@ -13,7 +13,7 @@ const SOCIALS = [
   },
   {
     label: "Instagram",
-    href: "https://www.instagram.com/",
+    href: "https://www.instagram.com/nemokino_/",
     icon: (
       <svg
         viewBox="0 0 24 24"
