@@ -41,7 +41,7 @@ export function authErrorMessage(message: string): string {
   if (m.includes("email not confirmed"))
     return "Имэйлээ баталгаажуулна уу. Таны имэйл рүү холбоос илгээсэн.";
   if (m.includes("already registered") || m.includes("already been registered"))
-    return "Энэ имэйлээр бүртгэл үүссэн байна. Нэвтэрнэ үү.";
+    return "Энэ имэйл хаяг аль хэдийн бүртгэлтэй байна.";
   if (m.includes("rate limit") || m.includes("security purposes"))
     return "Хэт олон оролдлого. Түр хүлээгээд дахин оролдоно уу.";
   return message;

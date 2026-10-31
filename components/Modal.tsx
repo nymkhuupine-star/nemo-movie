@@ -4,7 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useApp } from "./AppProvider";
 
-export default function Modal({ children }: { children: React.ReactNode }) {
+/** `fullPage` covers the whole screen; the content then brings its own back button. */
+export default function Modal({
+  children,
+  fullPage = false,
+}: {
+  children: React.ReactNode;
+  fullPage?: boolean;
+}) {
   const router = useRouter();
   const { authOpen } = useApp();
 
@@ -19,6 +26,18 @@ export default function Modal({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = "";
     };
   }, [router, authOpen]);
+
+  if (fullPage) {
+    return (
+      <div
+        className="animate-fade-in fixed inset-0 z-50 overflow-y-auto bg-black"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6">{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div

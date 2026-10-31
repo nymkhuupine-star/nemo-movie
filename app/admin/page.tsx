@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { MissingTable } from "@/components/admin/AdminShell";
+import RevenueOverview from "@/components/admin/RevenueOverview";
+import { adminPaidPayments } from "@/lib/admin-data";
 import { assertAdmin } from "@/lib/admin-guard";
 import { activeEntitlementsByUser, formatDate, listAllUsers } from "@/lib/admin-users";
 import { getAdminClient } from "@/lib/supabase";
@@ -72,11 +75,15 @@ async function Dashboard() {
   if (!getAdminClient()) {
     return <p className="text-sm text-hot">Supabase тохируулаагүй байна.</p>;
   }
-  const { movies, titles, plays, users, entitlements, subscribers, newUsers, plays7, top, missing, videoCount } =
-    await loadDashboard();
+  const [{ movies, titles, plays, users, entitlements, subscribers, newUsers, plays7, top, missing, videoCount }, payments] =
+    await Promise.all([loadDashboard(), adminPaidPayments()]);
 
   return (
     <>
+      {!payments && <MissingTable name="payments хүснэгт" file="payments.sql" />}
+      <RevenueOverview payments={payments ?? []} />
+
+      <div className="mt-6" />
       {missing.length > 0 && (
         <p className="mb-5 rounded-xl border border-price/30 bg-price/5 px-4 py-2.5 text-sm text-white/75">
           Зарим хүснэгт алга ({missing.join(", ")}). Supabase SQL Editor дээр{" "}
@@ -146,7 +153,6 @@ export default function AdminDashboardPage() {
   return (
     <>
       <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
-        <h1 className="mb-6 text-[28px] font-bold tracking-tight">Тойм</h1>
         <Suspense fallback={<p className="text-sm text-muted">Ачаалж байна…</p>}>
           <Dashboard />
         </Suspense>

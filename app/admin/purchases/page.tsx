@@ -2,7 +2,7 @@ import Link from "next/link";
 import AdminShell, { MissingTable } from "@/components/admin/AdminShell";
 import ConfirmSubmit from "@/components/admin/ConfirmSubmit";
 import { isActive, type EntitlementRow } from "@/lib/access";
-import { adminMovieOptions, adminPlans } from "@/lib/admin-data";
+import { adminMovieOptions, adminPaidPayments, adminPlans } from "@/lib/admin-data";
 import { assertAdmin } from "@/lib/admin-guard";
 import { formatDate, listAllUsers } from "@/lib/admin-users";
 import { getAdminClient } from "@/lib/supabase";
@@ -20,10 +20,10 @@ function mongoliaDay(date: Date): string {
 }
 
 /** Money actually received through QPay; manually granted access doesn't count. */
-function revenueCards(paid: { amount: number; paid_at: string }[]) {
+function revenueCards(paid: { amount: number; paidAt: string }[]) {
   const today = mongoliaDay(new Date());
   const sum = (match: (day: string) => boolean) =>
-    paid.reduce((total, p) => (match(mongoliaDay(new Date(p.paid_at))) ? total + p.amount : total), 0);
+    paid.reduce((total, p) => (match(mongoliaDay(new Date(p.paidAt))) ? total + p.amount : total), 0);
   return [
     ["Өнөөдрийн орлого", sum((day) => day === today)],
     ["Энэ сарын орлого", sum((day) => day.slice(0, 7) === today.slice(0, 7))],
@@ -42,9 +42,9 @@ async function Purchases({
   const status = TABS.some(([k]) => k === sp.status) ? String(sp.status) : "all";
 
   const admin = getAdminClient()!;
-  const [{ data, error }, { data: paid }, users, movies, { plans }] = await Promise.all([
+  const [{ data, error }, paid, users, movies, { plans }] = await Promise.all([
     admin.from("entitlements").select("*").order("created_at", { ascending: false }),
-    admin.from("payments").select("amount, paid_at").eq("status", "paid"),
+    adminPaidPayments(),
     listAllUsers(),
     adminMovieOptions(),
     adminPlans(),

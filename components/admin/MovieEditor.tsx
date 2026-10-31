@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { saveMovieData } from "@/app/admin/actions";
 import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
+import { readVideoMinutes } from "@/lib/video-duration";
 import type { Genre, Movie, VideoEdit } from "@/lib/movies";
 import VideoOverlays from "@/components/VideoOverlays";
 
@@ -222,7 +223,6 @@ export default function MovieEditor({
   const [logo, setLogo] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [subtitle, setSubtitle] = useState<File | null>(null);
-  const [orientation, setOrientation] = useState<"h" | "v">("h");
   const [tab, setTab] = useState<"logo" | "blur" | "subs" | "time">("logo");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -272,11 +272,20 @@ export default function MovieEditor({
   }, [movie?.id]);
   const logoPreview = useObjectUrl(logo);
 
+  // A new video means a new length, so it replaces whatever the field held.
+  const pickVideo = async (file: File | null) => {
+    setVideo(file);
+    if (!file) return;
+    const minutes = await readVideoMinutes(file);
+    if (minutes && videoInput.current?.files?.[0] === file) set("duration", fmtDuration(minutes));
+  };
+
   // Leaving the page keeps the partial upload so it can be resumed later.
   useEffect(() => () => uploadRef.current?.pause(), []);
 
   const previewEdit: VideoEdit = { ...d.edit, logoUrl: logoPreview ?? d.edit.logoUrl };
   const blurs = d.edit.blurs ?? [];
+  const orientation = d.edit.vertical ? "v" : "h";
 
   const submit = async () => {
     setError("");
@@ -444,7 +453,7 @@ export default function MovieEditor({
                   <input
                     value={d.duration}
                     onChange={(e) => set("duration", e.target.value)}
-                    placeholder="жишээ нь: 2ц 15м"
+                    placeholder="Бичлэгээс автоматаар бөглөгдөнө"
                     className={INPUT}
                   />
                 </label>
@@ -538,7 +547,7 @@ export default function MovieEditor({
                   type="file"
                   accept="video/*"
                   className="hidden"
-                  onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+                  onChange={(e) => pickVideo(e.target.files?.[0] ?? null)}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface px-4 py-4">
@@ -570,13 +579,13 @@ export default function MovieEditor({
 
         <Section n={4} title="Видео засвар" hint="Лого, блюр, хадмал ба киноны эхлэл, төгсгөл.">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-white/60">Урьдчилан харах</span>
+            <span className="text-sm text-white/60">Бичлэгийн чиглэл (сайт дээр ч ийм харагдана)</span>
             <div className="flex rounded-xl border border-line bg-surface p-1 text-sm">
               {(["h", "v"] as const).map((o) => (
                 <button
                   key={o}
                   type="button"
-                  onClick={() => setOrientation(o)}
+                  onClick={() => setEdit({ vertical: o === "v" })}
                   className={`rounded-lg px-3 py-1.5 ${
                     orientation === o ? "bg-accent/15 font-semibold text-accent-light" : "text-white/60"
                   }`}

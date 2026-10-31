@@ -6,7 +6,7 @@ create table if not exists public.payments (
   user_id          uuid not null references auth.users(id) on delete cascade,
   kind             text not null check (kind in ('subscription', 'movie')),
   plan_id          text,
-  days             int,                    -- plan length when bought; plans can change later
+  days             int,                    -- access length when bought; prices and plans can change later
   movie_id         text references public.movies(id) on delete set null,
   title            text not null,
   amount           int  not null check (amount > 0),
@@ -53,8 +53,9 @@ begin
   label := p.title || ' (' || to_char(p.amount, 'FM999,999,999') || '₮) · QPay';
 
   if p.kind = 'movie' then
+    -- Invoices made before movies had a time limit (days is null) stay permanent.
     insert into public.entitlements (user_id, kind, movie_id, expires_at, note)
-    values (p.user_id, 'movie', p.movie_id, null, label);
+    values (p.user_id, 'movie', p.movie_id, now() + make_interval(days => p.days), label);
   else
     -- Renewing early adds to the current period instead of overlapping it.
     select greatest(now(), coalesce(max(expires_at), now())) into period_start
