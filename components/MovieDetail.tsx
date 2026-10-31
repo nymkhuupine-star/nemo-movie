@@ -308,27 +308,22 @@ export default function MovieDetail({
           {movie.description}
         </p>
 
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className={`mt-5 flex gap-2 min-[360px]:gap-3 ${unlocked ? "" : "flex-wrap"}`}>
           {unlocked ? (
-            <>
-              <button
-                type="button"
-                onClick={play}
-                className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
-              >
-                {loading ? (
-                  "Ачаалж байна…"
-                ) : (
-                  <>
-                    <PlayIcon className="h-5 w-5" />
-                    Үзэх
-                  </>
-                )}
-              </button>
-              <span className="flex h-11 items-center rounded-lg border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent-light">
-                ✓ Танд эрх нээлттэй
-              </span>
-            </>
+            <button
+              type="button"
+              onClick={play}
+              className="btn-accent flex h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold min-[360px]:px-4 sm:px-5"
+            >
+              {loading ? (
+                "Ачаалж байна…"
+              ) : (
+                <>
+                  <PlayIcon className="h-5 w-5" />
+                  Үзэх
+                </>
+              )}
+            </button>
           ) : (
             <button
               type="button"
@@ -344,21 +339,23 @@ export default function MovieDetail({
           <FavoriteButton
             id={movie.id}
             withLabel
-            className="flex h-11 items-center rounded-lg border border-line bg-white/5 px-4 text-sm font-semibold hover:bg-white/10"
+            className="flex h-11 items-center rounded-lg border border-line bg-white/5 px-2 text-sm font-semibold whitespace-nowrap hover:bg-white/10 min-[360px]:px-3 sm:px-4"
           />
         </div>
 
         {message && <p className="mt-3 text-sm text-price">{message}</p>}
 
-        <Link
-          href="/subscription"
-          className="mt-6 flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm transition-colors hover:bg-accent/10"
-        >
-          <span className="text-white/60">
-            <b className="text-white">Гишүүнчлэл</b> — бүх кино, цуврал нэг дор
-          </span>
-          <span className="font-semibold text-accent-light">Үзэх →</span>
-        </Link>
+        {!unlocked && (
+          <Link
+            href="/subscription"
+            className="mt-6 flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 px-4 py-3 text-sm transition-colors hover:bg-accent/10"
+          >
+            <span className="text-white/60">
+              <b className="text-white">Гишүүнчлэл</b> — бүх кино, цуврал нэг дор
+            </span>
+            <span className="font-semibold text-accent-light">Үзэх →</span>
+          </Link>
+        )}
       </div>
     </div>
   );

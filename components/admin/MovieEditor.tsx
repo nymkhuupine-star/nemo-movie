@@ -6,7 +6,15 @@ import { saveMovieData } from "@/app/admin/actions";
 import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
 import { readVideoMinutes } from "@/lib/video-duration";
-import { embedFit, expandedBoxFit, type Genre, type Movie, type VideoEdit } from "@/lib/movies";
+import {
+  embedFit,
+  expandedBoxFit,
+  overlayLayout,
+  type Genre,
+  type Movie,
+  type OverlayLayout,
+  type VideoEdit,
+} from "@/lib/movies";
 import { EXPANDED_FRAME, ExpandButton, useExpand } from "@/components/useExpand";
 import VideoOverlays from "@/components/VideoOverlays";
 
@@ -239,6 +247,15 @@ export default function MovieEditor({
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
   const setEdit = (patch: Partial<VideoEdit>) => setD((p) => ({ ...p, edit: { ...p.edit, ...patch } }));
+  // Logo and blur changes go to the layout being shown. The first change in the
+  // portrait box starts its own copy, leaving the landscape layout as it was.
+  const setLayout = (patch: Partial<OverlayLayout>) =>
+    setD((p) => ({
+      ...p,
+      edit: p.edit.vertical
+        ? { ...p.edit, portrait: { ...overlayLayout(p.edit), ...patch } }
+        : { ...p.edit, ...patch },
+    }));
 
   // Draft: restore once, then save text fields on every change (new movies only).
   useEffect(() => {
@@ -288,7 +305,8 @@ export default function MovieEditor({
   useEffect(() => () => uploadRef.current?.pause(), []);
 
   const previewEdit: VideoEdit = { ...d.edit, logoUrl: logoPreview ?? d.edit.logoUrl };
-  const blurs = d.edit.blurs ?? [];
+  const layout = overlayLayout(d.edit);
+  const blurs = layout.blurs ?? [];
   const orientation = d.edit.vertical ? "v" : "h";
 
   const submit = async () => {
@@ -640,7 +658,7 @@ export default function MovieEditor({
                   </span>
                 </div>
               )}
-              <VideoOverlays edit={previewEdit} onChange={setEdit} />
+              <VideoOverlays edit={previewEdit} onChange={setLayout} />
             </div>
           </div>
 
@@ -718,9 +736,9 @@ export default function MovieEditor({
                         <button
                           key={p}
                           type="button"
-                          onClick={() => setEdit({ logoPos: p, logoX: undefined, logoY: undefined })}
+                          onClick={() => setLayout({ logoPos: p, logoX: undefined, logoY: undefined })}
                           className={`h-9 w-9 rounded-lg border ${
-                            (d.edit.logoPos ?? "tr") === p
+                            (layout.logoPos ?? "tr") === p
                               ? "border-accent bg-accent/10 text-accent-light"
                               : "border-line text-white/60"
                           }`}
@@ -735,8 +753,8 @@ export default function MovieEditor({
                         type="range"
                         min={4}
                         max={60}
-                        value={d.edit.logoSize ?? 12}
-                        onChange={(e) => setEdit({ logoSize: Number(e.target.value) })}
+                        value={layout.logoSize ?? 12}
+                        onChange={(e) => setLayout({ logoSize: Number(e.target.value) })}
                         className="flex-1 accent-[var(--color-accent)]"
                       />
                     </label>
@@ -763,7 +781,7 @@ export default function MovieEditor({
                           max={100}
                           value={b[k]}
                           onChange={(e) =>
-                            setEdit({
+                            setLayout({
                               blurs: blurs.map((x, j) => (j === i ? { ...x, [k]: Number(e.target.value) } : x)),
                             })
                           }
@@ -776,7 +794,7 @@ export default function MovieEditor({
                     </span>
                     <button
                       type="button"
-                      onClick={() => setEdit({ blurs: blurs.filter((_, j) => j !== i) })}
+                      onClick={() => setLayout({ blurs: blurs.filter((_, j) => j !== i) })}
                       className="justify-self-end text-sm text-hot"
                     >
                       Устгах
@@ -786,7 +804,7 @@ export default function MovieEditor({
                 <button
                   type="button"
                   disabled={blurs.length >= 6}
-                  onClick={() => setEdit({ blurs: [...blurs, { x: 70, y: 5, w: 25, h: 12 }] })}
+                  onClick={() => setLayout({ blurs: [...blurs, { x: 70, y: 5, w: 25, h: 12 }] })}
                   className="h-10 rounded-lg border border-line bg-surface px-4 text-sm font-semibold hover:bg-white/5 disabled:opacity-40"
                 >
                   + Блюр нэмэх
