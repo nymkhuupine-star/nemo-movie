@@ -11,6 +11,7 @@ import {
   getVideo,
   playerUrl,
   signUpload,
+  videoAspect,
 } from "@/lib/bunny";
 import { MOVIES_TAG } from "@/lib/data";
 import { getAdminClient } from "@/lib/supabase";
@@ -196,11 +197,17 @@ export async function fillMissingDurations(): Promise<number> {
 }
 
 /** Signed player link for the editor preview (first episode / the movie). */
-export async function getEditorPreview(movieId: string): Promise<string | null> {
+export async function getEditorPreview(
+  movieId: string,
+): Promise<{ url: string; aspect?: number } | null> {
   try {
     await requireAdmin();
     const videoId = await findVideoId(movieId, 1);
-    return videoId ? playerUrl(videoId, 60 * 60, undefined, false) : null;
+    if (!videoId) return null;
+    return {
+      url: playerUrl(videoId, 60 * 60, undefined, false),
+      aspect: await videoAspect(videoId),
+    };
   } catch {
     return null;
   }

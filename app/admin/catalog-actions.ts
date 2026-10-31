@@ -123,10 +123,11 @@ async function orderedIds(kind: OrderKind): Promise<string[]> {
   const { flag, column } = ORDER[kind];
   const { data } = await db()
     .from("movies")
-    .select("id, created_at")
+    .select("id")
     .eq(flag, true)
     .order(column, { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    // Same tie-break as the admin list, so unnumbered movies stay where they're shown.
+    .order("title");
   return ((data ?? []) as { id: string }[]).map((m) => m.id);
 }
 
@@ -159,18 +160,51 @@ export async function orderRemove(formData: FormData) {
   redirect(`/admin/order/${kind}`);
 }
 
-export async function orderMove(formData: FormData) {
+/**
+ * Saves the order shown in the admin list, writing only the rows that changed.
+ * Movies added or removed elsewhere meanwhile are respected: unknown ids are
+ * ignored and missing ones keep their place at the end.
+ */
+export async function saveOrder(
+  kindName: string,
+  ids: string[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
   await requireAdmin();
-  const kind = orderKind(formData);
-  const id = str(formData, "movieId");
-  const dir = str(formData, "dir") === "up" ? -1 : 1;
-  const ids = await orderedIds(kind);
-  const i = ids.indexOf(id);
-  const j = i + dir;
-  if (i >= 0 && j >= 0 && j < ids.length) {
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    await writeOrder(kind, ids);
+  const kind: OrderKind = kindName === "trending" ? "trending" : "featured";
+  const { flag, column } = ORDER[kind];
+  const { data, error } = await db()
+    .from("movies")
+    .select(`id, ${column}`)
+    .eq(flag, true)
+    .order(column, { ascending: true, nullsFirst: false })
+    .order("title");
+  if (error) {
+    return {
+      ok: false,
+      error: error.message.includes(column)
+        ? "Supabase дээр supabase/admin2.sql-ийг ажиллуулна уу."
+        : `Хадгалж чадсангүй: ${error.message}`,
+    };
   }
+
+  const rows = data as unknown as ({ id: string } & Record<string, number | null>)[];
+  const known = new Set(rows.map((r) => r.id));
+  const requested = new Set(ids);
+  const order = [
+    ...ids.filter((id) => known.has(id)),
+    ...rows.map((r) => r.id).filter((id) => !requested.has(id)),
+  ];
+  const current = new Map(rows.map((r) => [r.id, r[column]]));
+  const results = await Promise.all(
+    order.flatMap((id, i) =>
+      current.get(id) === i + 1
+        ? []
+        : [db().from("movies").update({ [column]: i + 1 }).eq("id", id)],
+    ),
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { ok: false, error: `Хадгалж чадсангүй: ${failed.error.message}` };
+
   updateTag(MOVIES_TAG);
-  redirect(`/admin/order/${kind}`);
+  return { ok: true };
 }

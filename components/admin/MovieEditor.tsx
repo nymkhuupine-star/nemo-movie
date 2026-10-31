@@ -6,7 +6,7 @@ import { saveMovieData } from "@/app/admin/actions";
 import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
 import { readVideoMinutes } from "@/lib/video-duration";
-import type { Genre, Movie, VideoEdit } from "@/lib/movies";
+import { embedFit, type Genre, type Movie, type VideoEdit } from "@/lib/movies";
 import VideoOverlays from "@/components/VideoOverlays";
 
 export type MovieKind = "movie" | "series";
@@ -261,7 +261,7 @@ export default function MovieEditor({
 
   const videoUrl = useObjectUrl(video);
   // Edit mode: preview the video that's already on Bunny.
-  const [savedPreview, setSavedPreview] = useState<string | null>(null);
+  const [savedPreview, setSavedPreview] = useState<{ url: string; aspect?: number } | null>(null);
   useEffect(() => {
     if (!movie?.id) return;
     let cancelled = false;
@@ -598,7 +598,7 @@ export default function MovieEditor({
           <div className="keep-dark flex justify-center rounded-xl bg-[#000]">
             <div
               data-overlay-box
-              className={`relative overflow-hidden ${
+              className={`relative flex items-center justify-center overflow-hidden ${
                 orientation === "h" ? "aspect-video w-full" : "aspect-[9/16] h-[420px]"
               }`}
             >
@@ -611,10 +611,11 @@ export default function MovieEditor({
                 />
               ) : savedPreview ? (
                 <iframe
-                  src={savedPreview}
+                  src={savedPreview.url}
                   title="Урьдчилан харах"
                   allow="autoplay; encrypted-media; fullscreen"
-                  className="h-full w-full border-0"
+                  className="border-0"
+                  style={embedFit(savedPreview.aspect, d.edit.vertical)}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-sm text-white/50">

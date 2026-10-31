@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdminShell from "@/components/admin/AdminShell";
-import Poster from "@/components/Poster";
+import OrderList from "@/components/admin/OrderList";
 import { IconBack } from "@/components/admin/icons";
 import { assertAdmin } from "@/lib/admin-guard";
 import { adminMovieOptions, type MovieOption } from "@/lib/admin-data";
 import type { Movie } from "@/lib/movies";
-import { orderAdd, orderMove, orderRemove } from "../../catalog-actions";
+import { orderAdd } from "../../catalog-actions";
 
 const KINDS = {
   featured: {
@@ -38,17 +38,6 @@ const asMovie = (m: MovieOption): Movie => ({
   poster: m.poster_url ?? undefined,
 });
 
-function Hidden({ kind, id, extra }: { kind: Kind; id: string; extra?: Record<string, string> }) {
-  return (
-    <>
-      <input type="hidden" name="kind" value={kind} />
-      <input type="hidden" name="movieId" value={id} />
-      {extra &&
-        Object.entries(extra).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-    </>
-  );
-}
-
 async function OrderEditor({ kind }: { kind: Kind }) {
   await assertAdmin();
   const cfg = KINDS[kind];
@@ -60,36 +49,20 @@ async function OrderEditor({ kind }: { kind: Kind }) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
-        {chosen.map((m, i) => (
-          <div key={m.id} className="flex items-center gap-4 border-b border-line p-3 last:border-0">
-            <span className="w-7 text-center text-sm font-semibold text-white/40">#{i + 1}</span>
-            <Poster movie={asMovie(m)} className="h-16 w-11 shrink-0 rounded-md" sizes="44px" />
-            <p className="min-w-0 flex-1 truncate font-medium">{m.title}</p>
-            {(["up", "down"] as const).map((dir) => (
-              <form key={dir} action={orderMove}>
-                <Hidden kind={kind} id={m.id} extra={{ dir }} />
-                <button
-                  disabled={dir === "up" ? i === 0 : i === chosen.length - 1}
-                  aria-label={dir === "up" ? "Дээш" : "Доош"}
-                  className="h-9 w-9 rounded-lg border border-line text-white/70 hover:bg-white/5 disabled:opacity-30"
-                >
-                  {dir === "up" ? "↑" : "↓"}
-                </button>
-              </form>
-            ))}
-            <form action={orderRemove}>
-              <Hidden kind={kind} id={m.id} />
-              <button className="h-9 rounded-lg border border-hot/30 px-3 text-sm text-hot hover:bg-hot/10">
-                Хасах
-              </button>
-            </form>
-          </div>
-        ))}
-        {chosen.length === 0 && <p className="p-10 text-center text-sm text-muted">{cfg.empty}</p>}
-      </div>
+      {chosen.length > 0 ? (
+        // Starts over only when movies are added or removed; a save keeps the list as moved.
+        <OrderList
+          key={chosen.map((m) => m.id).sort().join()}
+          kind={kind}
+          movies={chosen.map(asMovie)}
+        />
+      ) : (
+        <p className="rounded-2xl border border-line bg-surface p-10 text-center text-sm text-muted">
+          {cfg.empty}
+        </p>
+      )}
 
-      <form action={orderAdd} className="mt-6 flex flex-wrap gap-3 rounded-2xl border border-line bg-surface p-4">
+      <form action={orderAdd} className="mt-4 flex flex-wrap gap-3 rounded-2xl border border-line bg-surface p-4">
         <input type="hidden" name="kind" value={kind} />
         <select
           name="movieId"

@@ -71,6 +71,7 @@ export default function SeriesWatch({
           kind: res.kind,
           url: res.url,
           edit: res.edit,
+          aspect: res.aspect,
         });
       } else {
         setMessage(res.error);

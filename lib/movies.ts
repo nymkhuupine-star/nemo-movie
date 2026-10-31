@@ -88,6 +88,16 @@ export const COLLECTIONS: Genre[] = [
   { slug: "new", name: "Шинээр нэмэгдсэн" },
 ];
 
+/**
+ * Size of an embedded player inside its box. Bunny's player fills its frame and
+ * crops, so the frame takes the video's own shape, as large as fits the box.
+ */
+export function embedFit(aspect: number | undefined, vertical: boolean | undefined) {
+  if (!aspect) return { width: "100%", height: "100%" };
+  const box = vertical ? 9 / 16 : 16 / 9;
+  return aspect < box ? { height: "100%", aspectRatio: aspect } : { width: "100%", aspectRatio: aspect };
+}
+
 export const FREE_EPISODES = 3;
 /** How long buying one movie or series unlocks it. */
 export const MOVIE_ACCESS_DAYS = 3;
