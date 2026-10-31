@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import FavoriteButton from "./FavoriteButton";
-import { Player, useBuy, useMovieAccess, type Playing } from "./MovieDetail";
+import { Player, useBuy, useMovieAccess, useTrackView, type Playing } from "./MovieDetail";
 import PlayIcon from "./PlayIcon";
 import Poster from "./Poster";
 import { FREE_EPISODES, formatPrice, genreLabel, type Movie } from "@/lib/movies";
@@ -34,6 +34,7 @@ export default function SeriesWatch({
   const router = useRouter();
   const unlocked = useMovieAccess(movie.id);
   const buy = useBuy(movie.id);
+  useTrackView(movie);
   const [current, setCurrent] = useState(1);
   const [playing, setPlaying] = useState<Playing | null>(null);
   const [loading, setLoading] = useState(false);

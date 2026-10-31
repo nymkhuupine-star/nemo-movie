@@ -9,6 +9,7 @@ import {
   requestPinReset,
   resetPinWithCode,
 } from "@/app/auth-actions";
+import { trackMeta } from "@/lib/meta-pixel";
 import { isPin, PIN_ERROR, pinInput } from "@/lib/pin";
 
 const INPUT =
@@ -120,6 +121,7 @@ export default function AuthModal() {
       } else if (tab === "register") {
         const res = await registerUser(form);
         if (!res.ok) throw new Error(res.error);
+        trackMeta("CompleteRegistration", undefined, res.metaEventId);
         await signIn(res);
       } else if (tab === "forgot") {
         const res = await requestPinReset(email);

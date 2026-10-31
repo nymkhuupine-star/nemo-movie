@@ -1,4 +1,5 @@
 // Server-only: turns a confirmed QPay payment into an entitlement.
+import { sendMetaEvent, type MetaBrowser } from "./meta-capi";
 import { findPaidPayment, type QpayLink } from "./qpay";
 import { getAdminClient } from "./supabase";
 
@@ -17,8 +18,15 @@ export type PaymentRow = {
   status: "pending" | "paid";
   qpay_invoice_id: string | null;
   qpay: { qrImage: string; shortUrl: string; urls: QpayLink[] } | null;
+  /** Null until supabase/payments.sql adds the column, or if saving it failed. */
+  meta_browser?: MetaBrowser | null;
   created_at: string;
 };
+
+/** The item as Meta sees it: the movie's id, or the plan's. */
+export function metaContentIdOf(p: Pick<PaymentRow, "kind" | "plan_id" | "movie_id">): string {
+  return p.kind === "subscription" ? `plan-${p.plan_id}` : (p.movie_id ?? "movie");
+}
 
 function db() {
   const client = getAdminClient();
@@ -49,7 +57,18 @@ export async function settleQpay(p: PaymentRow): Promise<boolean> {
     p_ref: `qpay:${paymentId}`,
   });
   if (error) throw new Error(error.message);
-  return data === true;
+  if (data !== true) return false;
+
+  // Only the caller that settled it gets here, so a sale is reported once.
+  const { data: owner } = await db().auth.admin.getUserById(p.user_id);
+  await sendMetaEvent({
+    name: "Purchase",
+    eventId: `purchase-${p.id}`,
+    user: { id: p.user_id, email: owner.user?.email },
+    browser: p.meta_browser,
+    custom: { value: p.amount, currency: "MNT", contentIds: [metaContentIdOf(p)], contentName: p.title },
+  });
+  return true;
 }
 
 /** Scheduled job: settles everything, whether or not the customer is online. */
