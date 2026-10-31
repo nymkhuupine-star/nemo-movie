@@ -11,7 +11,7 @@ import {
   verifySessionToken,
 } from "@/lib/admin-session";
 import { MOVIES_TAG, getGenres } from "@/lib/data";
-import { SAMPLE_MOVIES, type VideoEdit } from "@/lib/movies";
+import { SAMPLE_MOVIES, type OverlayLayout, type VideoEdit } from "@/lib/movies";
 import { POSTER_BUCKET, getAdminClient } from "@/lib/supabase";
 import { deleteBunnyVideosForMovie } from "@/lib/videos";
 
@@ -103,19 +103,26 @@ function parseDuration(v: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
 
+function parseLayout(e: OverlayLayout): OverlayLayout {
+  const pct = (n: unknown) => Math.min(100, Math.max(0, Number(n) || 0));
+  return {
+    logoPos: ["tl", "tr", "bl", "br"].includes(e.logoPos ?? "") ? e.logoPos : "tr",
+    logoSize: Math.min(60, Math.max(3, Number(e.logoSize) || 12)),
+    logoX: e.logoX === undefined ? undefined : pct(e.logoX),
+    logoY: e.logoY === undefined ? undefined : pct(e.logoY),
+    blurs: (e.blurs ?? []).slice(0, 6).map((b) => ({
+      x: pct(b.x), y: pct(b.y), w: pct(b.w), h: pct(b.h),
+    })),
+  };
+}
+
 function parseEdit(raw: FormDataEntryValue | null): VideoEdit {
   try {
     const e = JSON.parse(String(raw ?? "{}")) as VideoEdit;
-    const pct = (n: unknown) => Math.min(100, Math.max(0, Number(n) || 0));
     return {
+      ...parseLayout(e),
+      portrait: e.portrait ? parseLayout(e.portrait) : undefined,
       logoUrl: typeof e.logoUrl === "string" && e.logoUrl ? e.logoUrl : undefined,
-      logoPos: ["tl", "tr", "bl", "br"].includes(e.logoPos ?? "") ? e.logoPos : "tr",
-      logoSize: Math.min(60, Math.max(3, Number(e.logoSize) || 12)),
-      logoX: e.logoX === undefined ? undefined : pct(e.logoX),
-      logoY: e.logoY === undefined ? undefined : pct(e.logoY),
-      blurs: (e.blurs ?? []).slice(0, 6).map((b) => ({
-        x: pct(b.x), y: pct(b.y), w: pct(b.w), h: pct(b.h),
-      })),
       startSec: Math.max(0, Number(e.startSec) || 0) || undefined,
       endSec: Math.max(0, Number(e.endSec) || 0) || undefined,
       vertical: e.vertical === true ? true : undefined,

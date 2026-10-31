@@ -3,9 +3,8 @@ export type Genre = {
   name: string;
 };
 
-/** Overlays and trim applied by the site's player (the video file is untouched). */
-export type VideoEdit = {
-  logoUrl?: string;
+/** Where the logo and blur boxes sit, in % of the player box. */
+export type OverlayLayout = {
   logoPos?: "tl" | "tr" | "bl" | "br";
   /** Logo width as % of the player width. */
   logoSize?: number;
@@ -14,11 +13,28 @@ export type VideoEdit = {
   logoY?: number;
   /** Rectangles (in % of the player) blurred over the video. */
   blurs?: { x: number; y: number; w: number; h: number }[];
+};
+
+/** Overlays and trim applied by the site's player (the video file is untouched). */
+export type VideoEdit = OverlayLayout & {
+  logoUrl?: string;
   startSec?: number;
   endSec?: number;
   /** Portrait (9:16) video: the player box takes that shape. */
   vertical?: boolean;
+  /**
+   * Layout for the portrait box. A % means something else in each box shape, so
+   * once edited it's kept apart from the landscape layout (the fields above).
+   */
+  portrait?: OverlayLayout;
 };
+
+/** The layout in force for the box shape chosen: the portrait one once it exists. */
+export function overlayLayout(edit: VideoEdit): OverlayLayout {
+  const { logoPos, logoSize, logoX, logoY, blurs } =
+    edit.vertical && edit.portrait ? edit.portrait : edit;
+  return { logoPos, logoSize, logoX, logoY, blurs };
+}
 
 export type Movie = {
   id: string;

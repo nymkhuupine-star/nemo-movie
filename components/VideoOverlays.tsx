@@ -1,8 +1,8 @@
 "use client";
 
-import type { VideoEdit } from "@/lib/movies";
+import { overlayLayout, type OverlayLayout, type VideoEdit } from "@/lib/movies";
 
-type Blur = NonNullable<VideoEdit["blurs"]>[number];
+type Blur = NonNullable<OverlayLayout["blurs"]>[number];
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -52,10 +52,12 @@ export default function VideoOverlays({
   onChange,
 }: {
   edit: VideoEdit;
-  onChange?: (patch: Partial<VideoEdit>) => void;
+  /** Receives changes to the layout in force for this box shape. */
+  onChange?: (patch: Partial<OverlayLayout>) => void;
 }) {
   const editable = Boolean(onChange);
-  const blurs = edit.blurs ?? [];
+  const layout = overlayLayout(edit);
+  const blurs = layout.blurs ?? [];
   const setBlur = (i: number, b: Blur) =>
     onChange?.({ blurs: blurs.map((x, j) => (j === i ? b : x)) });
 
@@ -73,11 +75,11 @@ export default function VideoOverlays({
   };
 
   // Logo: free x/y when set, otherwise one of the four corners.
-  const size = edit.logoSize ?? 12;
-  const free = edit.logoX !== undefined && edit.logoY !== undefined;
-  const pos = edit.logoPos ?? "tr";
+  const size = layout.logoSize ?? 12;
+  const free = layout.logoX !== undefined && layout.logoY !== undefined;
+  const pos = layout.logoPos ?? "tr";
   const logoStyle: React.CSSProperties = free
-    ? { left: `${edit.logoX}%`, top: `${edit.logoY}%`, width: `${size}%` }
+    ? { left: `${layout.logoX}%`, top: `${layout.logoY}%`, width: `${size}%` }
     : {
         width: `${size}%`,
         [pos[0] === "t" ? "top" : "bottom"]: "4%",
@@ -86,7 +88,7 @@ export default function VideoOverlays({
 
   /** Current logo top-left in %, measured from the DOM when it sits in a corner. */
   const logoOrigin = (el: HTMLElement) => {
-    if (free) return { x: edit.logoX!, y: edit.logoY! };
+    if (free) return { x: layout.logoX!, y: layout.logoY! };
     const box = (el.closest("[data-overlay-box]") as HTMLElement).getBoundingClientRect();
     const r = el.getBoundingClientRect();
     return {
