@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import VideoOverlays from "./VideoOverlays";
+import { EXPANDED_FRAME, ExpandButton, useExpand } from "./useExpand";
+import PlayIcon from "./PlayIcon";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
 import { useApp } from "./AppProvider";
 import {
   embedFit,
+  expandedBoxFit,
   formatDuration,
   formatPrice,
   genreLabel,
@@ -67,6 +70,8 @@ export function Player({
   const { edit } = playing;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ended, setEnded] = useState(false);
+  const { frame, expanded, toggle } = useExpand();
+  const [fileAspect, setFileAspect] = useState<number>();
   // The iframe is only mounted once player.js is ready, so "ready" isn't missed.
   const [pjsReady, setPjsReady] = useState(playing.kind !== "embed" || !edit.endSec);
 
@@ -100,13 +105,19 @@ export function Player({
   }, [playing.kind, edit.endSec, pjsReady]);
 
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden bg-black ${frameClassName}`}>
+    <div
+      ref={frame}
+      className={`flex items-center justify-center overflow-hidden bg-black ${
+        expanded ? EXPANDED_FRAME : `relative ${frameClassName}`
+      }`}
+    >
       {/* Overlay positions are % of this box, so it must match the admin preview. */}
       <div
         data-overlay-box
         className={`relative flex items-center justify-center overflow-hidden ${
-          edit.vertical ? "aspect-[9/16] h-full" : "h-full w-full"
+          expanded ? "" : edit.vertical ? "aspect-[9/16] h-full" : "h-full w-full"
         }`}
+        style={expanded ? expandedBoxFit(playing.aspect ?? fileAspect, edit.vertical) : undefined}
       >
         {playing.kind === "embed" ? (
           pjsReady && (
@@ -114,8 +125,8 @@ export function Player({
               ref={iframeRef}
               src={playing.url}
               title={playing.title}
-              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
+              // No fullscreen permission: ExpandButton replaces the player's own button.
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
               className="border-0"
               style={embedFit(playing.aspect, edit.vertical)}
             />
@@ -124,12 +135,16 @@ export function Player({
           <video
             src={playing.url}
             controls
+            controlsList="nofullscreen"
             autoPlay
             playsInline
             title={playing.title}
-            className="h-full w-full"
+            // Shaped like the video so its controls stay on screen when enlarged.
+            style={embedFit(fileAspect, edit.vertical)}
             onLoadedMetadata={(e) => {
               if (edit.startSec) e.currentTarget.currentTime = edit.startSec;
+              const { videoWidth, videoHeight } = e.currentTarget;
+              if (videoWidth && videoHeight) setFileAspect(videoWidth / videoHeight);
             }}
             onTimeUpdate={(e) => {
               if (edit.endSec && e.currentTarget.currentTime >= edit.endSec) {
@@ -146,7 +161,8 @@ export function Player({
           </div>
         )}
       </div>
-      {onClose && (
+      <ExpandButton expanded={expanded} onClick={toggle} />
+      {onClose && !expanded && (
         <button
           type="button"
           onClick={onClose}
@@ -300,7 +316,14 @@ export default function MovieDetail({
                 onClick={play}
                 className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
               >
-                {loading ? "Ачаалж байна…" : "▶ Үзэх"}
+                {loading ? (
+                  "Ачаалж байна…"
+                ) : (
+                  <>
+                    <PlayIcon className="h-5 w-5" />
+                    Үзэх
+                  </>
+                )}
               </button>
               <span className="flex h-11 items-center rounded-lg border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent-light">
                 ✓ Танд эрх нээлттэй

@@ -98,6 +98,22 @@ export function embedFit(aspect: number | undefined, vertical: boolean | undefin
   return aspect < box ? { height: "100%", aspectRatio: aspect } : { width: "100%", aspectRatio: aspect };
 }
 
+/**
+ * Size of the overlay box when a player is enlarged. The box keeps its shape so
+ * blur boxes stay on what they cover, and grows until the video itself fits the
+ * screen. On a phone a landscape box runs past the edges, but only its black
+ * sides are cut off.
+ */
+export function expandedBoxFit(aspect: number | undefined, vertical: boolean | undefined) {
+  const box = vertical ? 9 / 16 : 16 / 9;
+  const video = aspect ?? box;
+  const size =
+    video < box
+      ? { height: `min(100dvh, ${100 / video}vw)` }
+      : { width: `min(100vw, ${100 * video}dvh)` };
+  return { ...size, aspectRatio: box, flexShrink: 0 };
+}
+
 export const FREE_EPISODES = 3;
 /** How long buying one movie or series unlocks it. */
 export const MOVIE_ACCESS_DAYS = 3;

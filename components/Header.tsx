@@ -131,10 +131,10 @@ export default function Header({ genres }: { genres: Genre[] }) {
           </Link>
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-3">
           <form
             onSubmit={submitSearch}
-            className="hidden h-10 w-[250px] items-center gap-2 rounded-full border border-line bg-surface px-4 focus-within:border-accent/50 sm:flex lg:w-[250px]"
+            className="hidden h-10 w-full max-w-[250px] min-w-0 items-center gap-2 rounded-full border border-line bg-surface px-4 focus-within:border-accent/50 sm:flex"
           >
             <span className="text-white/50">⌕</span>
             <input
@@ -192,7 +192,7 @@ export default function Header({ genres }: { genres: Genre[] }) {
             <button
               type="button"
               onClick={() => openAuth("login")}
-              className="btn-accent h-9 rounded-full px-5 text-sm font-semibold transition-transform hover:scale-[1.03]"
+              className="btn-accent h-9 shrink-0 rounded-full px-5 text-sm font-semibold whitespace-nowrap transition-transform hover:scale-[1.03]"
             >
               Нэвтрэх
             </button>
