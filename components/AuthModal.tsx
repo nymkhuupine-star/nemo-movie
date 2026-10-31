@@ -3,16 +3,28 @@
 import { useEffect, useState } from "react";
 import { useApp, type AuthTab } from "./AppProvider";
 import { authErrorMessage, getBrowserClient } from "@/lib/supabase-browser";
-import { registerUser, requestPasswordReset } from "@/app/auth-actions";
+import {
+  loginWithPin,
+  registerUser,
+  requestPinReset,
+  resetPinWithCode,
+} from "@/app/auth-actions";
+import { isPin, PIN_ERROR, pinInput } from "@/lib/pin";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-line bg-surface-2 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-accent/60";
-const MIN_PASSWORD = 6;
 
 const TITLES: Record<AuthTab, string> = {
   login: "Нэвтрэх",
   register: "Бүртгүүлэх",
   forgot: "Нууц үг сэргээх",
+  reset: "Нууц үг сэргээх",
+};
+
+const SUBMIT_LABELS: Record<AuthTab, string> = {
+  ...TITLES,
+  forgot: "Код илгээх",
+  reset: "Нууц үг шинэчлэх",
 };
 
 export default function AuthModal() {
@@ -20,6 +32,7 @@ export default function AuthModal() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
@@ -37,10 +50,14 @@ export default function AuthModal() {
 
   if (!authOpen) return null;
   const tab = authOpen;
+  const newPin = tab === "register" || tab === "reset";
 
-  const switchTab = (next: AuthTab) => {
+  const switchTab = (next: AuthTab, message = "") => {
     setError("");
-    setNotice("");
+    setNotice(message);
+    setPassword("");
+    setConfirm("");
+    setCode("");
     openAuth(next);
   };
 
@@ -52,11 +69,15 @@ export default function AuthModal() {
       setError("Имэйл хаягаа зөв оруулна уу.");
       return;
     }
-    if (tab !== "forgot" && password.length < MIN_PASSWORD) {
-      setError(`Нууц үг хамгийн багадаа ${MIN_PASSWORD} тэмдэгт байна.`);
+    if (tab === "reset" && !/^\d{6}$/.test(code)) {
+      setError("Имэйлээр ирсэн 6 оронтой кодоо оруулна уу.");
       return;
     }
-    if (tab === "register" && password !== confirm) {
+    if (tab !== "forgot" && !isPin(password)) {
+      setError(PIN_ERROR);
+      return;
+    }
+    if (newPin && password !== confirm) {
       setError("Нууц үг таарахгүй байна.");
       return;
     }
@@ -69,16 +90,29 @@ export default function AuthModal() {
 
     setPending(true);
     try {
+      // FormData keeps the PIN out of dev server action logs.
+      const form = new FormData();
+      form.set("email", email);
+      form.set("password", password);
+
       if (tab === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        setPassword("");
-        closeAuth();
+        const res = await loginWithPin(form);
+        if (res.ok) {
+          const { error } = await supabase.auth.setSession({
+            access_token: res.accessToken,
+            refresh_token: res.refreshToken,
+          });
+          if (error) throw error;
+          setPassword("");
+          closeAuth();
+        } else if (res.locked) {
+          switchTab("reset", res.error);
+        } else {
+          setPassword("");
+          setError(res.error);
+        }
       } else if (tab === "register") {
         // Account + confirmation email are created on the server (Resend).
-        const form = new FormData();
-        form.set("email", email);
-        form.set("password", password);
         const res = await registerUser(form);
         if (!res.ok) throw new Error(res.error);
         setPassword("");
@@ -86,17 +120,35 @@ export default function AuthModal() {
         setNotice(
           "Бүртгэл үүслээ! Имэйл рүү тань баталгаажуулах холбоос илгээлээ.",
         );
-      } else {
-        const res = await requestPasswordReset(email);
+      } else if (tab === "forgot") {
+        const res = await requestPinReset(email);
         if (!res.ok) throw new Error(res.error);
-        setNotice(
-          "Хэрэв энэ имэйлээр бүртгэл байгаа бол нууц үг сэргээх холбоос илгээлээ. Имэйлээ шалгана уу.",
-        );
+        switchTab("reset", "Хэрэв энэ имэйлээр бүртгэл байгаа бол код илгээлээ. Имэйлээ шалгана уу.");
+      } else {
+        form.set("code", code);
+        const res = await resetPinWithCode(form);
+        if (!res.ok) throw new Error(res.error);
+        switchTab("login", "Нууц үг шинэчлэгдлээ. Шинэ нууц үгээрээ нэвтэрнэ үү.");
       }
     } catch (err) {
       setError(
         authErrorMessage(err instanceof Error ? err.message : String(err)),
       );
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const resend = async () => {
+    setError("");
+    setNotice("");
+    setPending(true);
+    try {
+      const res = await requestPinReset(email);
+      if (res.ok) setNotice("Шинэ код авах хүсэлт илгээлээ. Нэг минутад нэг удаа илгээнэ.");
+      else setError(res.error);
+    } catch {
+      setError("Код илгээж чадсангүй. Дахин оролдоно уу.");
     } finally {
       setPending(false);
     }
@@ -125,7 +177,11 @@ export default function AuthModal() {
 
         {tab === "forgot" ? (
           <p className="mt-3 text-sm leading-relaxed text-white/60">
-            Бүртгэлтэй имэйлээ оруулна уу. Нууц үг шинэчлэх холбоос илгээнэ.
+            Бүртгэлтэй имэйлээ оруулна уу. Нууц үг шинэчлэх код илгээнэ.
+          </p>
+        ) : tab === "reset" ? (
+          <p className="mt-3 text-sm leading-relaxed text-white/60">
+            Имэйлээр ирсэн кодоо оруулаад шинэ нууц үгээ тавина уу.
           </p>
         ) : (
           <div className="mt-5 grid grid-cols-2 rounded-full border border-line bg-surface p-1">
@@ -157,31 +213,48 @@ export default function AuthModal() {
             />
           </label>
 
-          {tab !== "forgot" && (
+          {tab === "reset" && (
             <label className="block">
-              <span className="mb-2 block text-sm text-white/60">
-                Нууц үг ({MIN_PASSWORD}+ тэмдэгт)
-              </span>
+              <span className="mb-2 block text-sm text-white/60">Имэйлээр ирсэн код</span>
               <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="••••••"
-                autoComplete={tab === "register" ? "new-password" : "current-password"}
+                autoComplete="one-time-code"
                 className={INPUT}
               />
             </label>
           )}
-          {tab === "register" && (
+
+          {tab !== "forgot" && (
+            <label className="block">
+              <span className="mb-2 block text-sm text-white/60">
+                {tab === "reset" ? "Шинэ нууц үг" : "Нууц үг"} (4 оронтой тоо)
+              </span>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={password}
+                onChange={(e) => setPassword(pinInput(e.target.value))}
+                placeholder="••••"
+                autoComplete={newPin ? "new-password" : "current-password"}
+                className={INPUT}
+              />
+            </label>
+          )}
+          {newPin && (
             <label className="block">
               <span className="mb-2 block text-sm text-white/60">
                 Нууц үг давтах
               </span>
               <input
                 type="password"
+                inputMode="numeric"
                 value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="••••••"
+                onChange={(e) => setConfirm(pinInput(e.target.value))}
+                placeholder="••••"
                 autoComplete="new-password"
                 className={INPUT}
               />
@@ -206,14 +279,21 @@ export default function AuthModal() {
             disabled={pending}
             className="btn-accent h-11 w-full rounded-xl text-sm font-semibold transition-transform hover:scale-[1.01] disabled:opacity-60"
           >
-            {pending
-              ? "Түр хүлээнэ үү…"
-              : tab === "forgot"
-                ? "Холбоос илгээх"
-                : TITLES[tab]}
+            {pending ? "Түр хүлээнэ үү…" : SUBMIT_LABELS[tab]}
           </button>
 
-          {tab === "forgot" && (
+          {tab === "reset" && (
+            <button
+              type="button"
+              onClick={resend}
+              disabled={pending}
+              className="w-full text-sm font-medium text-accent-light hover:underline disabled:opacity-60"
+            >
+              Код дахин авах
+            </button>
+          )}
+
+          {(tab === "forgot" || tab === "reset") && (
             <button
               type="button"
               onClick={() => switchTab("login")}

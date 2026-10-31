@@ -33,6 +33,32 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
+/** Same look as actionEmail, showing a code to type instead of a button. */
+export function codeEmail(opts: {
+  heading: string;
+  body: string;
+  code: string;
+  footnote: string;
+}): { html: string; text: string } {
+  const html = `<!doctype html>
+<html><body style="margin:0;background:#0b0b0b;font-family:Arial,Helvetica,sans-serif;color:#ffffff">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#141414;border:1px solid #262626;border-radius:16px;padding:32px">
+        <tr><td style="font-size:26px;font-weight:900;letter-spacing:-1px">nemo<span style="color:#d8b4fe">●</span></td></tr>
+        <tr><td style="padding-top:24px;font-size:20px;font-weight:bold">${escapeHtml(opts.heading)}</td></tr>
+        <tr><td style="padding-top:12px;font-size:15px;line-height:1.6;color:#bdbdbd">${escapeHtml(opts.body)}</td></tr>
+        <tr><td style="padding-top:24px;font-size:34px;font-weight:900;letter-spacing:8px;color:#d8b4fe">${escapeHtml(opts.code)}</td></tr>
+        <tr><td style="padding-top:28px;font-size:12px;line-height:1.6;color:#7a7a7a">${escapeHtml(opts.footnote)}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#5c5c5c;margin-top:16px">© Nemo Kino · nemokino.com</p>
+    </td></tr>
+  </table>
+</body></html>`;
+  const text = `${opts.heading}\n\n${opts.body}\n\n${opts.code}\n\n${opts.footnote}`;
+  return { html, text };
+}
+
 /** Simple dark email with one call-to-action button. */
 export function actionEmail(opts: {
   heading: string;

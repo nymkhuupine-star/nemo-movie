@@ -11,7 +11,7 @@ import {
 import { getBrowserClient } from "@/lib/supabase-browser";
 
 type User = { id: string; email: string };
-export type AuthTab = "login" | "register" | "forgot";
+export type AuthTab = "login" | "register" | "forgot" | "reset";
 
 type AppState = {
   user: User | null;

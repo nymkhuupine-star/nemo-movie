@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useApp } from "./AppProvider";
 import {
   checkPayment,
   startCheckout,
@@ -53,6 +54,7 @@ export default function CheckoutModal({
   onClose: () => void;
   onPaid?: () => void;
 }) {
+  const { logout, openAuth } = useApp();
   const [checkout, setCheckout] = useState<CheckoutView | null>(null);
   const [error, setError] = useState("");
   const [paid, setPaid] = useState(false);
@@ -63,8 +65,16 @@ export default function CheckoutModal({
       try {
         const res = await startCheckout(item, await getAccessToken());
         if (cancelled) return;
-        if (res.ok) setCheckout(res.checkout);
-        else setError(res.error);
+        if (res.ok) {
+          setCheckout(res.checkout);
+        } else if (res.needsLogin) {
+          // The saved session looked signed in but the server rejected it.
+          await logout();
+          onClose();
+          openAuth("login");
+        } else {
+          setError(res.error);
+        }
       } catch {
         if (!cancelled) setError("Төлбөр эхлүүлэхэд алдаа гарлаа. Дахин оролдоно уу.");
       }

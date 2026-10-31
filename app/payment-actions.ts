@@ -17,7 +17,9 @@ export type CheckoutView = {
   qpay: NonNullable<PaymentRow["qpay"]>;
 };
 
-export type CheckoutResult = { ok: true; checkout: CheckoutView } | { ok: false; error: string };
+export type CheckoutResult =
+  | { ok: true; checkout: CheckoutView }
+  | { ok: false; error: string; needsLogin?: boolean };
 
 const REUSE_MS = 24 * 60 * 60 * 1000;
 
@@ -67,7 +69,7 @@ export async function startCheckout(item: CheckoutItem, token?: string): Promise
     return { ok: false, error: "Төлбөрийн систем тохируулагдаагүй байна." };
   }
   const userId = await userIdFromToken(token);
-  if (!userId) return { ok: false, error: "Эхлээд нэвтэрнэ үү." };
+  if (!userId) return { ok: false, error: "Эхлээд нэвтэрнэ үү.", needsLogin: true };
 
   const resolved = await resolveItem(item);
   if (!resolved) return { ok: false, error: "Энэ багц эсвэл кино олдсонгүй." };
