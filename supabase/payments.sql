@@ -22,6 +22,8 @@ alter table public.payments
   drop column if exists code,
   drop column if exists bank_checked_at,
   drop column if exists paid_via;
+-- The buyer's browser details for the Meta purchase event, which may come from QPay's callback.
+alter table public.payments add column if not exists meta_browser jsonb;
 create index if not exists payments_user_idx on public.payments (user_id, status);
 create index if not exists payments_pending_idx on public.payments (created_at) where status = 'pending';
 alter table public.payments enable row level security;

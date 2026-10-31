@@ -9,10 +9,19 @@ import {
   type CheckoutItem,
   type CheckoutView,
 } from "@/app/payment-actions";
+import { trackMeta } from "@/lib/meta-pixel";
 import { formatPrice } from "@/lib/movies";
 import { getAccessToken } from "@/lib/supabase-browser";
 
 const POLL_MS = 4000;
+
+const metaParams = (c: CheckoutView) => ({
+  content_ids: [c.metaContentId],
+  content_name: c.title,
+  content_type: "product",
+  value: c.amount,
+  currency: "MNT",
+});
 
 function QpayPanel({ qpay }: { qpay: CheckoutView["qpay"] }) {
   return (
@@ -67,6 +76,7 @@ export default function CheckoutModal({
         if (cancelled) return;
         if (res.ok) {
           setCheckout(res.checkout);
+          trackMeta("InitiateCheckout", metaParams(res.checkout), `checkout-${res.checkout.id}`);
         } else if (res.needsLogin) {
           // The saved session looked signed in but the server rejected it.
           await logout();
@@ -97,6 +107,7 @@ export default function CheckoutModal({
         if (cancelled) return;
         if (res.paid) {
           setPaid(true);
+          if (checkout) trackMeta("Purchase", metaParams(checkout), `purchase-${id}`);
           onPaid?.();
           return;
         }

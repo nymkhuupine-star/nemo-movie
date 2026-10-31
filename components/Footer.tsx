@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Logo from "./Logo";
 
 const SOCIALS = [
@@ -50,7 +51,12 @@ export default function Footer() {
             ))}
           </div>
         </div>
-        <p className="mt-6 text-xs text-muted">© 2026 Nemo Movie</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 text-xs text-muted">
+          <p>© 2026 Nemo Movie</p>
+          <Link href="/privacy-policy" className="py-3 transition-colors hover:text-white">
+            Нууцлалын бодлого
+          </Link>
+        </div>
       </div>
     </footer>
   );

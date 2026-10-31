@@ -19,6 +19,7 @@ import {
   type VideoEdit,
 } from "@/lib/movies";
 import { getMyAccess, getPlayback } from "@/app/play-actions";
+import { trackMeta } from "@/lib/meta-pixel";
 import { getAccessToken as accessToken } from "@/lib/supabase-browser";
 import type { Access } from "@/lib/access";
 
@@ -210,6 +211,19 @@ export function MovieDetailSkeleton() {
   );
 }
 
+/** Tells Meta which title the visitor opened, for ads. */
+export function useTrackView({ id, title, price }: Movie) {
+  useEffect(() => {
+    trackMeta("ViewContent", {
+      content_ids: [id],
+      content_name: title,
+      content_type: "product",
+      value: price,
+      currency: "MNT",
+    });
+  }, [id, title, price]);
+}
+
 /** Goes to the payment page, asking to sign in first when needed. */
 export function useBuy(movieId: string) {
   const router = useRouter();
@@ -234,6 +248,7 @@ export default function MovieDetail({
   const [message, setMessage] = useState("");
   const unlocked = useMovieAccess(movie.id);
   const buy = useBuy(movie.id);
+  useTrackView(movie);
 
   // Next keeps a closed page mounted but hidden; a hidden iframe would keep playing.
   useEffect(() => () => setPlaying(null), []);

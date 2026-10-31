@@ -1,9 +1,11 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { accessFor, canWatch, userIdFromToken } from "@/lib/access";
+import { metaBrowser, sendMetaEvent } from "@/lib/meta-capi";
 import { MOVIE_ACCESS_DAYS } from "@/lib/movies";
-import { getPayment, settleQpay, type PaymentRow } from "@/lib/payments";
+import { getPayment, metaContentIdOf, settleQpay, type PaymentRow } from "@/lib/payments";
 import { createInvoice, qpayConfigured } from "@/lib/qpay";
 import { getAdminClient } from "@/lib/supabase";
 
@@ -16,6 +18,8 @@ export type CheckoutView = {
   title: string;
   amount: number;
   qpay: NonNullable<PaymentRow["qpay"]>;
+  /** The same id the server's copy of the ad event uses (see lib/meta-capi.ts). */
+  metaContentId: string;
 };
 
 export type CheckoutResult =
@@ -139,6 +143,23 @@ export async function startCheckout(item: CheckoutItem, token?: string): Promise
     }
   }
 
+  // Kept for the purchase event, which may come from QPay's callback instead of this browser.
+  // Separate and best-effort, so a missing column can't stop a payment.
+  const browser = await metaBrowser();
+  const { id: paymentId, title, amount } = payment;
+  const metaContentId = metaContentIdOf(payment);
+  after(async () => {
+    await admin.from("payments").update({ meta_browser: browser }).eq("id", paymentId).then(() => {}, () => {});
+    const { data: owner } = await admin.auth.admin.getUserById(userId);
+    await sendMetaEvent({
+      name: "InitiateCheckout",
+      eventId: `checkout-${paymentId}`,
+      user: { id: userId, email: owner.user?.email },
+      browser,
+      custom: { value: amount, currency: "MNT", contentIds: [metaContentId], contentName: title },
+    });
+  });
+
   return {
     ok: true,
     checkout: {
@@ -146,6 +167,7 @@ export async function startCheckout(item: CheckoutItem, token?: string): Promise
       title: payment.title,
       amount: payment.amount,
       qpay: payment.qpay,
+      metaContentId,
     },
   };
 }

@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { codeEmail, emailConfigured, sendEmail } from "@/lib/email";
+import { metaBrowser, sendMetaEvent } from "@/lib/meta-capi";
 import { isPin, PIN_ERROR } from "@/lib/pin";
 import {
   hashResetCode,
@@ -14,7 +16,7 @@ import { getAdminClient, getPublicClient } from "@/lib/supabase";
 export type AuthActionResult = { ok: true } | { ok: false; error: string };
 
 export type LoginResult =
-  | { ok: true; accessToken: string; refreshToken: string }
+  | { ok: true; accessToken: string; refreshToken: string; metaEventId?: string }
   | { ok: false; error: string; locked?: boolean };
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -88,7 +90,7 @@ export async function registerUser(form: FormData): Promise<LoginResult> {
     return { ok: false, error: "Түр хүлээгээд дахин оролдоно уу." };
   }
 
-  const { error } = await getAdminClient()!.auth.admin.createUser({
+  const { data: created, error } = await getAdminClient()!.auth.admin.createUser({
     email,
     password: pinToPassword(email, pin),
     email_confirm: true,
@@ -104,7 +106,19 @@ export async function registerUser(form: FormData): Promise<LoginResult> {
   // Failed guesses made before this account existed shouldn't count against it.
   await getAdminClient()!.from("login_guards").delete().eq("email", email);
 
-  return sessionFor(email, pin);
+  const metaEventId = `register-${created.user.id}`;
+  const browser = await metaBrowser();
+  after(() =>
+    sendMetaEvent({
+      name: "CompleteRegistration",
+      eventId: metaEventId,
+      user: { id: created.user.id, email },
+      browser,
+    }),
+  );
+
+  const session = await sessionFor(email, pin);
+  return session.ok ? { ...session, metaEventId } : session;
 }
 
 /**
