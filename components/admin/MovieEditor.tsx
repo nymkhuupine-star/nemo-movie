@@ -6,7 +6,8 @@ import { saveMovieData } from "@/app/admin/actions";
 import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
 import { readVideoMinutes } from "@/lib/video-duration";
-import { embedFit, type Genre, type Movie, type VideoEdit } from "@/lib/movies";
+import { embedFit, expandedBoxFit, type Genre, type Movie, type VideoEdit } from "@/lib/movies";
+import { EXPANDED_FRAME, ExpandButton, useExpand } from "@/components/useExpand";
 import VideoOverlays from "@/components/VideoOverlays";
 
 export type MovieKind = "movie" | "series";
@@ -271,6 +272,9 @@ export default function MovieEditor({
     };
   }, [movie?.id]);
   const logoPreview = useObjectUrl(logo);
+
+  // Lets blur boxes and the logo be placed at full size.
+  const { frame: previewFrame, expanded, toggle: toggleExpanded } = useExpand();
 
   // A new video means a new length, so it replaces whatever the field held.
   const pickVideo = async (file: File | null) => {
@@ -595,25 +599,34 @@ export default function MovieEditor({
               ))}
             </div>
           </div>
-          <div className="keep-dark flex justify-center rounded-xl bg-[#000]">
+          <div
+            ref={previewFrame}
+            className={`keep-dark flex justify-center bg-[#000] ${
+              expanded ? `${EXPANDED_FRAME} items-center` : "relative rounded-xl"
+            }`}
+          >
+            <ExpandButton expanded={expanded} onClick={toggleExpanded} withLabel />
             <div
               data-overlay-box
               className={`relative flex items-center justify-center overflow-hidden ${
-                orientation === "h" ? "aspect-video w-full" : "aspect-[9/16] h-[420px]"
+                expanded ? "" : orientation === "h" ? "aspect-video w-full" : "aspect-[9/16] h-[420px]"
               }`}
+              style={expanded ? expandedBoxFit(savedPreview?.aspect, d.edit.vertical) : undefined}
             >
               {videoUrl ? (
                 <video
                   ref={previewRef}
                   src={videoUrl}
                   controls
+                  controlsList="nofullscreen"
                   className="h-full w-full object-contain"
                 />
               ) : savedPreview ? (
+                // No fullscreen permission: "Томруулах" replaces the player's own button.
                 <iframe
                   src={savedPreview.url}
                   title="Урьдчилан харах"
-                  allow="autoplay; encrypted-media; fullscreen"
+                  allow="autoplay; encrypted-media"
                   className="border-0"
                   style={embedFit(savedPreview.aspect, d.edit.vertical)}
                 />

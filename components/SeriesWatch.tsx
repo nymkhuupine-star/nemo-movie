@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import FavoriteButton from "./FavoriteButton";
 import { Player, useBuy, useMovieAccess, type Playing } from "./MovieDetail";
+import PlayIcon from "./PlayIcon";
 import Poster from "./Poster";
 import { FREE_EPISODES, formatPrice, genreLabel, type Movie } from "@/lib/movies";
 import { getPlayback } from "@/app/play-actions";
@@ -134,8 +135,8 @@ export default function SeriesWatch({
                   aria-label={`${current}-р анги тоглуулах`}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/60 pl-1 text-2xl text-white backdrop-blur transition-colors hover:bg-black/80">
-                    {loading ? "…" : "▶"}
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/60 text-2xl text-white backdrop-blur transition-colors hover:bg-black/80">
+                    {loading ? "…" : <PlayIcon className="h-8 w-8" />}
                   </span>
                 </button>
               </div>
@@ -166,7 +167,7 @@ export default function SeriesWatch({
             </span>
           </div>
 
-          <div className="mt-4 grid max-h-[480px] grid-cols-6 gap-2 overflow-y-auto">
+          <div className="mt-4 grid max-h-[480px] grid-cols-5 gap-2 overflow-y-auto min-[400px]:grid-cols-6 sm:grid-cols-10 lg:grid-cols-6">
             {Array.from({ length: total }, (_, i) => i + 1).map((n) => {
               const free = isFree(n);
               return (

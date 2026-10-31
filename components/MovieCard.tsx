@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PlayIcon from "./PlayIcon";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
 import { formatPrice, genreLabel, type Movie } from "@/lib/movies";
@@ -41,8 +42,8 @@ export default function MovieCard({ movie }: { movie: Movie }) {
           </span>
 
           <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-            <span className="btn-accent flex h-11 w-11 items-center justify-center rounded-full pl-0.5 text-lg">
-              ▶
+            <span className="btn-accent flex h-11 w-11 items-center justify-center rounded-full">
+              <PlayIcon className="h-[22px] w-[22px]" />
             </span>
           </span>
         </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import PlayIcon from "./PlayIcon";
 import Poster from "./Poster";
 import { genreLabel, type Movie } from "@/lib/movies";
 
@@ -21,12 +22,12 @@ function HeroCard({ movie, active }: { movie: Movie; active: boolean }) {
         <span className="absolute top-2 left-2 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-black uppercase">
           {movie.episodes ? `${movie.episodes} анги` : "Онцлох"}
         </span>
-        <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold backdrop-blur">
+        <span className="absolute bottom-4 left-2 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold backdrop-blur sm:bottom-2">
           <span className="text-accent-light">★</span>
           {movie.rating.toFixed(1)}
         </span>
-        <span className="btn-accent absolute right-2 -bottom-4 flex h-9 w-9 items-center justify-center rounded-full pl-0.5 text-sm transition-transform group-hover:scale-110">
-          ▶
+        <span className="btn-accent absolute right-2 -bottom-4 flex h-7 w-7 items-center justify-center rounded-full transition-transform group-hover:scale-110 sm:h-9 sm:w-9">
+          <PlayIcon className="h-3.5 w-3.5 sm:h-[18px] sm:w-[18px]" />
         </span>
       </div>
       <div className="px-3 pt-4 pb-3">
@@ -71,7 +72,8 @@ export default function Hero({ movies }: { movies: Movie[] }) {
               scroll={false}
               className="btn-accent flex h-12 items-center gap-2 rounded-full px-7 text-sm font-semibold transition-transform hover:scale-[1.03]"
             >
-              ▶ Одоо үзэх
+              <PlayIcon className="h-5 w-5" />
+              Одоо үзэх
             </Link>
             <Link
               href="/browse/trending"

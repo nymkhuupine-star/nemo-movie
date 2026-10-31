@@ -16,7 +16,9 @@ function drag(
 ) {
   e.preventDefault();
   e.stopPropagation();
-  const box = (e.currentTarget.closest("[data-overlay-box]") as HTMLElement).getBoundingClientRect();
+  // Keeps the drag going when the pointer crosses the player's iframe.
+  e.currentTarget.setPointerCapture(e.pointerId);
+  const box =(e.currentTarget.closest("[data-overlay-box]") as HTMLElement).getBoundingClientRect();
   const sx = e.clientX;
   const sy = e.clientY;
   const move = (ev: PointerEvent) =>
