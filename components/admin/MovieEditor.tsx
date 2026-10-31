@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { saveMovieData } from "@/app/admin/actions";
 import { getEditorPreview, uploadCaption } from "@/app/admin/video-actions";
 import { uploadEpisodeVideo, type UploadHandle } from "@/lib/upload-video";
+import { readVideoMinutes } from "@/lib/video-duration";
 import type { Genre, Movie, VideoEdit } from "@/lib/movies";
 import VideoOverlays from "@/components/VideoOverlays";
 
@@ -271,6 +272,14 @@ export default function MovieEditor({
   }, [movie?.id]);
   const logoPreview = useObjectUrl(logo);
 
+  // A new video means a new length, so it replaces whatever the field held.
+  const pickVideo = async (file: File | null) => {
+    setVideo(file);
+    if (!file) return;
+    const minutes = await readVideoMinutes(file);
+    if (minutes && videoInput.current?.files?.[0] === file) set("duration", fmtDuration(minutes));
+  };
+
   // Leaving the page keeps the partial upload so it can be resumed later.
   useEffect(() => () => uploadRef.current?.pause(), []);
 
@@ -444,7 +453,7 @@ export default function MovieEditor({
                   <input
                     value={d.duration}
                     onChange={(e) => set("duration", e.target.value)}
-                    placeholder="жишээ нь: 2ц 15м"
+                    placeholder="Бичлэгээс автоматаар бөглөгдөнө"
                     className={INPUT}
                   />
                 </label>
@@ -538,7 +547,7 @@ export default function MovieEditor({
                   type="file"
                   accept="video/*"
                   className="hidden"
-                  onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+                  onChange={(e) => pickVideo(e.target.files?.[0] ?? null)}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-4 rounded-xl border border-line bg-surface px-4 py-4">

@@ -1,10 +1,24 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/admin-session";
-import { addCaption, createVideo, deleteVideo, playerUrl, signUpload } from "@/lib/bunny";
+import {
+  addCaption,
+  bunnyConfigured,
+  createVideo,
+  deleteVideo,
+  getVideo,
+  playerUrl,
+  signUpload,
+} from "@/lib/bunny";
+import { MOVIES_TAG } from "@/lib/data";
 import { getAdminClient } from "@/lib/supabase";
+import { secondsToMinutes } from "@/lib/video-duration";
 import { findVideoId } from "@/lib/videos";
+
+// Keeps one visit to the movie list from making hundreds of Bunny requests.
+const DURATIONS_PER_RUN = 30;
 
 async function requireAdmin() {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -134,6 +148,50 @@ export async function uploadCaption(formData: FormData): Promise<{ ok: boolean; 
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Алдаа гарлаа." };
+  }
+}
+
+/**
+ * Fills in the length of movies saved without one, from what Bunny measured:
+ * older movies, and files the browser couldn't read. Bunny reports 0 until it
+ * has processed a video, so those are picked up on a later run. Returns how
+ * many changed.
+ */
+export async function fillMissingDurations(): Promise<number> {
+  try {
+    await requireAdmin();
+    if (!bunnyConfigured()) return 0;
+    const { data: movies } = await db()
+      .from("movies")
+      .select("id")
+      .is("duration", null)
+      .is("episodes", null);
+    const ids = ((movies ?? []) as { id: string }[]).map((m) => m.id);
+    if (ids.length === 0) return 0;
+
+    const { data: videos } = await db()
+      .from("videos")
+      .select("movie_id, bunny_video_id")
+      .eq("episode", 1)
+      .in("movie_id", ids)
+      .limit(DURATIONS_PER_RUN);
+
+    const results = await Promise.allSettled(
+      ((videos ?? []) as { movie_id: string; bunny_video_id: string }[]).map(async (v) => {
+        const { length } = await getVideo(v.bunny_video_id);
+        if (!length) return false;
+        const { error } = await db()
+          .from("movies")
+          .update({ duration: secondsToMinutes(length) })
+          .eq("id", v.movie_id);
+        return !error;
+      }),
+    );
+    const changed = results.filter((r) => r.status === "fulfilled" && r.value).length;
+    if (changed) updateTag(MOVIES_TAG);
+    return changed;
+  } catch {
+    return 0;
   }
 }
 

@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Poster from "@/components/Poster";
 import { deleteMovie } from "@/app/admin/actions";
 import { setMovieHidden } from "@/app/admin/catalog-actions";
+import { fillMissingDurations } from "@/app/admin/video-actions";
 import { formatDuration, genreLabel, type Genre, type Movie } from "@/lib/movies";
 import {
   IconDots,
@@ -114,9 +116,18 @@ export default function MoviesTable({
   rows: MovieTableRow[];
   genres: Genre[];
 }) {
+  const router = useRouter();
   const [hidden, setHidden] = useState(
     () => new Map(rows.map((r) => [r.id, Boolean(r.hidden)])),
   );
+
+  // Movies still missing a length get it from Bunny whenever this list opens.
+  useEffect(() => {
+    fillMissingDurations().then((changed) => {
+      if (changed) router.refresh();
+    });
+  }, [router]);
+
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("all");
