@@ -1,4 +1,5 @@
 // Server-only, uncached reads for admin pages (always fresh).
+import { listAllUsers } from "./admin-users";
 import { SAMPLE_PLANS, type Plan } from "./movies";
 import { getAdminClient } from "./supabase";
 
@@ -19,6 +20,59 @@ export async function adminPlans(): Promise<{ plans: Plan[]; missing: boolean }>
     })),
     missing: false,
   };
+}
+
+export type PaidPayment = {
+  id: string;
+  amount: number;
+  paidAt: string;
+  title: string;
+  /** Groups payments for the same movie or plan. */
+  itemKey: string;
+  email: string | null;
+};
+
+type PaidRow = {
+  id: string;
+  user_id: string;
+  kind: "subscription" | "movie";
+  plan_id: string | null;
+  movie_id: string | null;
+  title: string;
+  amount: number;
+  paid_at: string;
+};
+
+/**
+ * Money actually received through QPay, newest first; manually granted access
+ * doesn't count. Null when the table doesn't exist.
+ */
+export async function adminPaidPayments(): Promise<PaidPayment[] | null> {
+  const admin = getAdminClient();
+  if (!admin) return null;
+  const rows: PaidRow[] = [];
+  // Supabase returns at most 1000 rows per request, which would cut off the totals.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin
+      .from("payments")
+      .select("id, user_id, kind, plan_id, movie_id, title, amount, paid_at")
+      .eq("status", "paid")
+      .order("paid_at", { ascending: false })
+      .order("id")
+      .range(from, from + 999);
+    if (error) return null;
+    rows.push(...(data as PaidRow[]));
+    if (data.length < 1000) break;
+  }
+  const emails = new Map((await listAllUsers()).map((u) => [u.id, u.email ?? null]));
+  return rows.map((p) => ({
+    id: p.id,
+    amount: p.amount,
+    paidAt: p.paid_at,
+    title: p.kind === "subscription" ? `Гишүүнчлэл · ${p.title}` : p.title,
+    itemKey: p.kind === "subscription" ? `plan:${p.plan_id}` : `movie:${p.movie_id ?? p.title}`,
+    email: emails.get(p.user_id) ?? null,
+  }));
 }
 
 export type MovieOption = {

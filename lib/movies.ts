@@ -16,6 +16,8 @@ export type VideoEdit = {
   blurs?: { x: number; y: number; w: number; h: number }[];
   startSec?: number;
   endSec?: number;
+  /** Portrait (9:16) video: the player box takes that shape. */
+  vertical?: boolean;
 };
 
 export type Movie = {
@@ -39,6 +41,8 @@ export type Movie = {
   videoUrl?: string;
   /** Hue (0-360) for the generated poster. */
   hue: number;
+  /** Portrait video; shapes the player before playback starts. */
+  vertical?: boolean;
   /** Display name of the genre, resolved from the genres table. */
   genreName?: string;
   /** Position in the home page hero (lower first). */
@@ -85,6 +89,8 @@ export const COLLECTIONS: Genre[] = [
 ];
 
 export const FREE_EPISODES = 3;
+/** How long buying one movie or series unlocks it. */
+export const MOVIE_ACCESS_DAYS = 3;
 
 /** Sample catalogue: shown until Supabase is connected, and used by the admin "seed" button. */
 export const SAMPLE_MOVIES: Movie[] = [

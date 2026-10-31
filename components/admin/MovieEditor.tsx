@@ -222,7 +222,6 @@ export default function MovieEditor({
   const [logo, setLogo] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [subtitle, setSubtitle] = useState<File | null>(null);
-  const [orientation, setOrientation] = useState<"h" | "v">("h");
   const [tab, setTab] = useState<"logo" | "blur" | "subs" | "time">("logo");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -277,6 +276,7 @@ export default function MovieEditor({
 
   const previewEdit: VideoEdit = { ...d.edit, logoUrl: logoPreview ?? d.edit.logoUrl };
   const blurs = d.edit.blurs ?? [];
+  const orientation = d.edit.vertical ? "v" : "h";
 
   const submit = async () => {
     setError("");
@@ -570,13 +570,13 @@ export default function MovieEditor({
 
         <Section n={4} title="Видео засвар" hint="Лого, блюр, хадмал ба киноны эхлэл, төгсгөл.">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-white/60">Урьдчилан харах</span>
+            <span className="text-sm text-white/60">Бичлэгийн чиглэл (сайт дээр ч ийм харагдана)</span>
             <div className="flex rounded-xl border border-line bg-surface p-1 text-sm">
               {(["h", "v"] as const).map((o) => (
                 <button
                   key={o}
                   type="button"
-                  onClick={() => setOrientation(o)}
+                  onClick={() => setEdit({ vertical: o === "v" })}
                   className={`rounded-lg px-3 py-1.5 ${
                     orientation === o ? "bg-accent/15 font-semibold text-accent-light" : "text-white/60"
                   }`}

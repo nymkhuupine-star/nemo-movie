@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import VideoOverlays from "./VideoOverlays";
 import Poster from "./Poster";
 import FavoriteButton from "./FavoriteButton";
-import CheckoutModal from "./CheckoutModal";
 import { useApp } from "./AppProvider";
 import {
-  FREE_EPISODES,
   formatDuration,
   formatPrice,
   genreLabel,
@@ -19,7 +18,7 @@ import { getMyAccess, getPlayback } from "@/app/play-actions";
 import { getAccessToken as accessToken } from "@/lib/supabase-browser";
 import type { Access } from "@/lib/access";
 
-type Playing = {
+export type Playing = {
   title: string;
   kind: "embed" | "file";
   url: string;
@@ -54,12 +53,14 @@ function loadPlayerJs(): Promise<NonNullable<Window["playerjs"]>> {
   });
 }
 
-function Player({
+export function Player({
   playing,
   onClose,
+  frameClassName = "aspect-video w-full",
 }: {
   playing: Playing;
-  onClose: () => void;
+  onClose?: () => void;
+  frameClassName?: string;
 }) {
   const { edit } = playing;
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -97,55 +98,80 @@ function Player({
   }, [playing.kind, edit.endSec, pjsReady]);
 
   return (
-    <div
-      data-overlay-box
-      className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-black"
-    >
-      {playing.kind === "embed" ? (
-        pjsReady && (
-          <iframe
-            ref={iframeRef}
-            src={playing.url}
-            title={playing.title}
-            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="h-full w-full border-0"
-          />
-        )
-      ) : (
-        <video
-          src={playing.url}
-          controls
-          autoPlay
-          playsInline
-          title={playing.title}
-          className="h-full w-full"
-          onLoadedMetadata={(e) => {
-            if (edit.startSec) e.currentTarget.currentTime = edit.startSec;
-          }}
-          onTimeUpdate={(e) => {
-            if (edit.endSec && e.currentTarget.currentTime >= edit.endSec) {
-              e.currentTarget.pause();
-              setEnded(true);
-            }
-          }}
-        />
-      )}
-      <VideoOverlays edit={edit} />
-      {ended && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-sm text-white/80">
-          Дууслаа
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-3 left-3 z-10 rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+    <div className={`relative flex items-center justify-center overflow-hidden bg-black ${frameClassName}`}>
+      {/* Overlay positions are % of this box, so it must match the admin preview. */}
+      <div
+        data-overlay-box
+        className={`relative overflow-hidden ${edit.vertical ? "aspect-[9/16] h-full" : "h-full w-full"}`}
       >
-        ← Буцах
-      </button>
+        {playing.kind === "embed" ? (
+          pjsReady && (
+            <iframe
+              ref={iframeRef}
+              src={playing.url}
+              title={playing.title}
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+              className="h-full w-full border-0"
+            />
+          )
+        ) : (
+          <video
+            src={playing.url}
+            controls
+            autoPlay
+            playsInline
+            title={playing.title}
+            className="h-full w-full"
+            onLoadedMetadata={(e) => {
+              if (edit.startSec) e.currentTarget.currentTime = edit.startSec;
+            }}
+            onTimeUpdate={(e) => {
+              if (edit.endSec && e.currentTarget.currentTime >= edit.endSec) {
+                e.currentTarget.pause();
+                setEnded(true);
+              }
+            }}
+          />
+        )}
+        <VideoOverlays edit={edit} />
+        {ended && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-sm text-white/80">
+            Дууслаа
+          </div>
+        )}
+      </div>
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-3 left-3 z-10 rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+        >
+          ← Буцах
+        </button>
+      )}
     </div>
   );
+}
+
+/** Asks the server whether the signed-in user may watch this title. */
+export function useMovieAccess(movieId: string): boolean {
+  const { user } = useApp();
+  const [access, setAccess] = useState<Access | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = user ? await accessToken() : undefined;
+      const result = token ? await getMyAccess(movieId, token) : null;
+      if (!cancelled) setAccess(result);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, movieId]);
+
+  return Boolean(access?.subscriptionUntil || access?.ownsMovie);
 }
 
 export function MovieDetailSkeleton() {
@@ -163,6 +189,18 @@ export function MovieDetailSkeleton() {
   );
 }
 
+/** Goes to the payment page, asking to sign in first when needed. */
+export function useBuy(movieId: string) {
+  const router = useRouter();
+  const { user, openAuth } = useApp();
+  return () => {
+    const toPayment = () => router.push(`/pay/${movieId}`);
+    if (user) toPayment();
+    else openAuth("login", toPayment);
+  };
+}
+
+/** Detail view of a single movie. Series use SeriesWatch instead. */
 export default function MovieDetail({
   movie,
   inModal = false,
@@ -170,51 +208,23 @@ export default function MovieDetail({
   movie: Movie;
   inModal?: boolean;
 }) {
-  const { user, openAuth } = useApp();
   const [playing, setPlaying] = useState<Playing | null>(null);
-  const [loading, setLoading] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [access, setAccess] = useState<Access | null>(null);
-  const [buying, setBuying] = useState(false);
-  const [paidCount, setPaidCount] = useState(0);
-  const unlocked = Boolean(access?.subscriptionUntil || access?.ownsMovie);
+  const unlocked = useMovieAccess(movie.id);
+  const buy = useBuy(movie.id);
 
-  // Ask the server what this user may watch, to drop the lock icons.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const token = user ? await accessToken() : undefined;
-      const result = token ? await getMyAccess(movie.id, token) : null;
-      if (!cancelled) setAccess(result);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, movie.id, paidCount]);
+  // Next keeps a closed page mounted but hidden; a hidden iframe would keep playing.
+  useEffect(() => () => setPlaying(null), []);
 
-  const buy = () => {
-    if (!user) {
-      openAuth("login");
-      return;
-    }
+  const play = async () => {
     setMessage("");
-    setBuying(true);
-  };
-
-  const playEpisode = async (n: number) => {
-    const locked = !unlocked && (!movie.episodes || n > FREE_EPISODES);
-    if (locked && !user) {
-      setMessage("Үзэхийн тулд нэвтэрч, худалдаж авах эсвэл гишүүнчлэл идэвхжүүлнэ үү.");
-      openAuth("login");
-      return;
-    }
-    setMessage("");
-    setLoading(n);
+    setLoading(true);
     try {
-      const res = await getPlayback(movie.id, n, await accessToken());
+      const res = await getPlayback(movie.id, 1, await accessToken());
       if (res.ok) {
         setPlaying({
-          title: movie.episodes ? `${movie.title} — ${n}-р анги` : movie.title,
+          title: movie.title,
           kind: res.kind,
           url: res.url,
           edit: res.edit,
@@ -225,19 +235,12 @@ export default function MovieDetail({
     } catch {
       setMessage("Видео ачаалахад алдаа гарлаа.");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   };
 
   return (
     <div>
-      {buying && (
-        <CheckoutModal
-          item={{ kind: "movie", movieId: movie.id }}
-          onClose={() => setBuying(false)}
-          onPaid={() => setPaidCount((n) => n + 1)}
-        />
-      )}
       {playing ? (
         <Player playing={playing} onClose={() => setPlaying(null)} />
       ) : (
@@ -271,7 +274,6 @@ export default function MovieDetail({
           </span>
           <span>{movie.year}</span>
           {movie.duration && <span>{formatDuration(movie.duration)}</span>}
-          {movie.episodes && <span>{movie.episodes} анги</span>}
           <Link
             href={`/browse/${movie.genre}`}
             className="rounded border border-line px-1.5 py-0.5 text-xs text-white/70 hover:text-white"
@@ -285,38 +287,30 @@ export default function MovieDetail({
         </p>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          {movie.episodes || unlocked ? (
+          {unlocked ? (
+            <>
+              <button
+                type="button"
+                onClick={play}
+                className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
+              >
+                {loading ? "Ачаалж байна…" : "▶ Үзэх"}
+              </button>
+              <span className="flex h-11 items-center rounded-lg border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent-light">
+                ✓ Танд эрх нээлттэй
+              </span>
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => playEpisode(1)}
-              className="btn-accent flex h-11 items-center gap-2 rounded-lg px-5 text-sm font-semibold"
+              onClick={buy}
+              className="btn-accent flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-semibold"
             >
-              {loading === 1
-                ? "Ачаалж байна…"
-                : movie.episodes
-                  ? "▶ 1-р анги үзэх"
-                  : "▶ Үзэх"}
+              Худалдаж авах
+              <span className="rounded-md bg-black/25 px-2 py-0.5 text-xs">
+                {formatPrice(movie.price)}
+              </span>
             </button>
-          ) : null}
-          {unlocked ? (
-            <span className="flex h-11 items-center rounded-lg border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-accent-light">
-              ✓ Танд эрх нээлттэй
-            </span>
-          ) : (
-          <button
-            type="button"
-            onClick={buy}
-            className={`flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-semibold ${
-              movie.episodes || unlocked
-                ? "border border-line bg-white/5 hover:bg-white/10"
-                : "btn-accent"
-            }`}
-          >
-            Худалдаж авах
-            <span className="rounded-md bg-black/25 px-2 py-0.5 text-xs">
-              {formatPrice(movie.price)}
-            </span>
-          </button>
           )}
           <FavoriteButton
             id={movie.id}
@@ -326,45 +320,6 @@ export default function MovieDetail({
         </div>
 
         {message && <p className="mt-3 text-sm text-price">{message}</p>}
-
-        {movie.episodes ? (
-          <div className="mt-6">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h2 className="font-semibold">Ангиуд</h2>
-              <span className="text-xs text-muted">
-                {unlocked
-                  ? "Бүх анги нээлттэй"
-                  : `Эхний ${FREE_EPISODES} анги үнэгүй`}
-              </span>
-            </div>
-            <div className="grid max-h-[220px] grid-cols-6 gap-2 overflow-y-auto pr-1 sm:grid-cols-8">
-              {Array.from({ length: movie.episodes }, (_, i) => i + 1).map(
-                (n) => {
-                  const free = unlocked || n <= FREE_EPISODES;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => playEpisode(n)}
-                      className={`relative h-10 rounded-lg text-sm font-medium transition-colors ${
-                        free
-                          ? "border border-accent/40 bg-accent/10 text-accent-light hover:bg-accent/20"
-                          : "border border-line bg-surface text-white/50 hover:text-white"
-                      }`}
-                    >
-                      {loading === n ? "…" : n}
-                      {!free && (
-                        <span className="absolute top-0.5 right-1 text-[8px]">
-                          🔒
-                        </span>
-                      )}
-                    </button>
-                  );
-                },
-              )}
-            </div>
-          </div>
-        ) : null}
 
         <Link
           href="/subscription"

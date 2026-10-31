@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { accessFor, canWatch, userIdFromToken } from "@/lib/access";
+import { MOVIE_ACCESS_DAYS } from "@/lib/movies";
 import { getPayment, settleQpay, type PaymentRow } from "@/lib/payments";
 import { createInvoice, qpayConfigured } from "@/lib/qpay";
 import { getAdminClient } from "@/lib/supabase";
@@ -59,7 +60,15 @@ async function resolveItem(item: CheckoutItem) {
     .select("id, title, price")
     .eq("id", item.movieId)
     .maybeSingle();
-  return data && { plan_id: null, days: null, movie_id: data.id, title: data.title, amount: data.price };
+  return (
+    data && {
+      plan_id: null,
+      days: MOVIE_ACCESS_DAYS,
+      movie_id: data.id,
+      title: data.title,
+      amount: data.price,
+    }
+  );
 }
 
 /** Opens checkout, resuming an unpaid one so a reload can't lose an invoice. */
@@ -88,6 +97,7 @@ export async function startCheckout(item: CheckoutItem, token?: string): Promise
     .eq("status", "pending")
     .eq(kindFilter, item.kind === "subscription" ? item.planId : item.movieId)
     .eq("amount", resolved.amount)
+    .eq("days", resolved.days)
     .gte("created_at", new Date(Date.now() - REUSE_MS).toISOString())
     .order("created_at", { ascending: false })
     .limit(1)

@@ -118,6 +118,7 @@ function parseEdit(raw: FormDataEntryValue | null): VideoEdit {
       })),
       startSec: Math.max(0, Number(e.startSec) || 0) || undefined,
       endSec: Math.max(0, Number(e.endSec) || 0) || undefined,
+      vertical: e.vertical === true ? true : undefined,
     };
   } catch {
     return {};

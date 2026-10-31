@@ -58,6 +58,7 @@ export function rowToMovie(r: MovieRow): Movie {
     poster: r.poster_url ?? undefined,
     videoUrl: r.video_url ?? undefined,
     hue: r.hue,
+    vertical: r.edit?.vertical,
     heroOrder: r.hero_order ?? undefined,
     trendOrder: r.trend_order ?? undefined,
     hidden: r.is_hidden ?? false,

@@ -116,6 +116,19 @@ body {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
   to { opacity: 1; transform: none; }
 }
+/* Uncovers the admin revenue chart from left to right. */
+.revenue-reveal {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: revenue-reveal 0.9s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes revenue-reveal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .revenue-reveal { animation: none; }
+}
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }

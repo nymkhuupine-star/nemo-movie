@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { getBrowserClient } from "@/lib/supabase-browser";
@@ -17,8 +18,11 @@ type AppState = {
   user: User | null;
   logout: () => Promise<void>;
   authOpen: AuthTab | null;
-  openAuth: (tab?: AuthTab) => void;
+  /** `then` runs once the user has signed in from this dialog. */
+  openAuth: (tab?: AuthTab, then?: () => void) => void;
   closeAuth: () => void;
+  /** Closes the dialog after a successful sign-in. */
+  finishAuth: () => void;
   favorites: string[];
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
@@ -52,6 +56,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [authOpen, setAuthOpen] = useState<AppState["authOpen"]>(null);
+  const afterAuth = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // Hydrate persisted state after mount so server and client markup match.
@@ -93,8 +98,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       user,
       logout,
       authOpen,
-      openAuth: (tab = "login") => setAuthOpen(tab),
-      closeAuth: () => setAuthOpen(null),
+      openAuth: (tab = "login", then) => {
+        // Switching tabs inside the dialog passes no `then`, and keeps the one set.
+        if (then) afterAuth.current = then;
+        setAuthOpen(tab);
+      },
+      closeAuth: () => {
+        afterAuth.current = null;
+        setAuthOpen(null);
+      },
+      finishAuth: () => {
+        setAuthOpen(null);
+        afterAuth.current?.();
+        afterAuth.current = null;
+      },
       favorites,
       isFavorite: (id) => favorites.includes(id),
       toggleFavorite,

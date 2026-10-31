@@ -28,7 +28,7 @@ const SUBMIT_LABELS: Record<AuthTab, string> = {
 };
 
 export default function AuthModal() {
-  const { authOpen, openAuth, closeAuth } = useApp();
+  const { authOpen, openAuth, closeAuth, finishAuth } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -95,16 +95,22 @@ export default function AuthModal() {
       form.set("email", email);
       form.set("password", password);
 
+      const signIn = async (session: { accessToken: string; refreshToken: string }) => {
+        const { error } = await supabase.auth.setSession({
+          access_token: session.accessToken,
+          refresh_token: session.refreshToken,
+        });
+        if (error) throw error;
+        setPassword("");
+        setConfirm("");
+        setCode("");
+        finishAuth();
+      };
+
       if (tab === "login") {
         const res = await loginWithPin(form);
         if (res.ok) {
-          const { error } = await supabase.auth.setSession({
-            access_token: res.accessToken,
-            refresh_token: res.refreshToken,
-          });
-          if (error) throw error;
-          setPassword("");
-          closeAuth();
+          await signIn(res);
         } else if (res.locked) {
           switchTab("reset", res.error);
         } else {
@@ -112,14 +118,9 @@ export default function AuthModal() {
           setError(res.error);
         }
       } else if (tab === "register") {
-        // Account + confirmation email are created on the server (Resend).
         const res = await registerUser(form);
         if (!res.ok) throw new Error(res.error);
-        setPassword("");
-        setConfirm("");
-        setNotice(
-          "Бүртгэл үүслээ! Имэйл рүү тань баталгаажуулах холбоос илгээлээ.",
-        );
+        await signIn(res);
       } else if (tab === "forgot") {
         const res = await requestPinReset(email);
         if (!res.ok) throw new Error(res.error);
@@ -128,7 +129,7 @@ export default function AuthModal() {
         form.set("code", code);
         const res = await resetPinWithCode(form);
         if (!res.ok) throw new Error(res.error);
-        switchTab("login", "Нууц үг шинэчлэгдлээ. Шинэ нууц үгээрээ нэвтэрнэ үү.");
+        await signIn(res);
       }
     } catch (err) {
       setError(
@@ -211,6 +212,11 @@ export default function AuthModal() {
               autoComplete="email"
               className={INPUT}
             />
+            {tab === "register" && (
+              <span className="mt-2 block text-xs leading-relaxed text-price">
+                Имэйлээ зөв бичээрэй, нууц үг сэргээх код энэ хаяг руу очно.
+              </span>
+            )}
           </label>
 
           {tab === "reset" && (
