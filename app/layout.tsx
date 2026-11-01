@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   },
   description:
     "Шилдэг кино, цувралууд нэг дор. Монгол хадмалтай дуртай түүхээ сонгоод шууд үзээрэй.",
+  // Meta domain verification (Business settings → Brand safety → Domains). Keep it: Meta re-checks.
+  other: { "facebook-domain-verification": "8ms2lxva82zskxj0nez8stjcofyboj" },
 };
 
 export default function RootLayout({ children, modal }: LayoutProps<"/">) {
