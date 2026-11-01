@@ -33,7 +33,7 @@ export default function SeriesWatch({
 }) {
   const router = useRouter();
   const unlocked = useMovieAccess(movie.id);
-  const buy = useBuy(movie.id);
+  const buy = useBuy(movie);
   useTrackView(movie);
   const [current, setCurrent] = useState(1);
   const [playing, setPlaying] = useState<Playing | null>(null);

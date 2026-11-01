@@ -1,4 +1,4 @@
-// Meta Pixel in the browser: page views and the ad events (view, registration, checkout,
+// Meta Pixel in the browser: page views and the ad events (view, buy press, registration, checkout,
 // purchase), so ads can optimise for people who actually buy. The server sends registration,
 // checkout and purchase too (lib/meta-capi.ts) with the same event ids; Meta keeps one.
 // Off unless NEXT_PUBLIC_META_PIXEL_ID is set.

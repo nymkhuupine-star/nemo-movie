@@ -224,14 +224,18 @@ export function useTrackView({ id, title, price }: Movie) {
   }, [id, title, price]);
 }
 
-/** Goes to the payment page, asking to sign in first when needed. */
-export function useBuy(movieId: string) {
+/** Goes to the payment page, which asks to sign in once an option is picked. */
+export function useBuy({ id, title, price }: Movie) {
   const router = useRouter();
-  const { user, openAuth } = useApp();
   return () => {
-    const toPayment = () => router.push(`/pay/${movieId}`);
-    if (user) toPayment();
-    else openAuth("login", toPayment);
+    trackMeta("AddToCart", {
+      content_ids: [id],
+      content_name: title,
+      content_type: "product",
+      value: price,
+      currency: "MNT",
+    });
+    router.push(`/pay/${id}`);
   };
 }
 
@@ -247,7 +251,7 @@ export default function MovieDetail({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const unlocked = useMovieAccess(movie.id);
-  const buy = useBuy(movie.id);
+  const buy = useBuy(movie);
   useTrackView(movie);
 
   // Next keeps a closed page mounted but hidden; a hidden iframe would keep playing.
